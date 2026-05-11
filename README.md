@@ -253,5 +253,3 @@ CipherScope is a **practical demonstration of distributed brute-force computatio
 * Workloads can be split across machines
 * CPU cores can be fully utilized
 * Systems can scale horizontally
-```
-```
