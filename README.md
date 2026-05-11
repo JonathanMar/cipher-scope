@@ -45,21 +45,6 @@ CipherScope/
 ├── utils/         # Logging and helpers
 ├── main.go        # Local (non-distributed) execution
 
-### 🔹 Execution Flow
-       ┌────────────┐
-       │   Master   │
-       └─────┬──────┘
-             │
-    ┌────────┼────────┐
-    │        │        │
-┌────▼───┐ ┌──▼────┐ ┌─▼─────┐
-│ Worker │ │ Worker│ │ Worker│
-└────┬───┘ └──┬────┘ └──┬────┘
-│         │         │
-┌────▼─────────▼─────────▼────┐
-│   Parallel Hash Processing  │
-└─────────────────────────────┘
-
 ## ⚙️ Requirements
 
 - Go 1.20+
