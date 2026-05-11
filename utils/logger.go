@@ -1,15 +1,22 @@
 package utils
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
+
+func log(level string, msg string) {
+	fmt.Printf("[%s] [%s] %s\n", level, time.Now().Format("15:04:05"), msg)
+}
 
 func Info(msg string) {
-	fmt.Println("[INFO]", msg)
+	log("INFO", msg)
 }
 
 func Success(msg string) {
-	fmt.Println("[SUCCESS]", msg)
+	log("SUCCESS", msg)
 }
 
 func Error(msg string) {
-	fmt.Println("[ERROR]", msg)
+	log("ERROR", msg)
 }

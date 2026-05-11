@@ -1,27 +1,50 @@
 package attacks
 
-import "auditor/core"
+import (
+	"auditor/core"
+	"context"
+	"runtime"
+)
 
 func BruteForceAttack(charset string, length int, targetHash string, hashType string) string {
-	var jobs []core.Job
+	bufferSize := runtime.NumCPU() * 100
+	jobChan := make(chan core.Job, bufferSize)
 
-	var generate func(string, int)
-	generate = func(prefix string, remaining int) {
-		if remaining == 0 {
-			jobs = append(jobs, core.Job{
-				Word:       prefix,
-				TargetHash: targetHash,
-				HashType:   hashType,
-			})
-			return
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go func() {
+		defer close(jobChan)
+
+		var generate func([]byte, int)
+
+		generate = func(prefix []byte, remaining int) {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
+
+			if remaining == 0 {
+				jobChan <- core.Job{
+					Word:       string(prefix),
+					TargetHash: targetHash,
+					HashType:   hashType,
+				}
+				return
+			}
+
+			for i := 0; i < len(charset); i++ {
+				next := make([]byte, len(prefix)+1)
+				copy(next, prefix)
+				next[len(prefix)] = charset[i]
+
+				generate(next, remaining-1)
+			}
 		}
 
-		for _, c := range charset {
-			generate(prefix+string(c), remaining-1)
-		}
-	}
+		generate([]byte{}, length)
+	}()
 
-	generate("", length)
-
-	return core.RunEngine(jobs, 4)
+	return core.RunEngine(ctx, jobChan, runtime.NumCPU())
 }

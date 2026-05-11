@@ -1,45 +1,52 @@
 package core
 
 import (
+	"context"
 	"sync"
 )
 
-func RunEngine(jobs []Job, workers int) string {
-	jobChan := make(chan Job)
-	resultChan := make(chan string)
+func RunEngine(ctx context.Context, jobChan <-chan Job, workers int) string {
+	resultChan := make(chan string, 1)
 
 	var wg sync.WaitGroup
 
-	// Workers
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	for i := 0; i < workers; i++ {
 		wg.Add(1)
+
 		go func() {
 			defer wg.Done()
-			for job := range jobChan {
-				found, result := Process(job)
-				if found {
-					resultChan <- result
+
+			for {
+				select {
+				case <-ctx.Done():
 					return
+				case job, ok := <-jobChan:
+					if !ok {
+						return
+					}
+
+					found, result := Process(job)
+					if found {
+						select {
+						case resultChan <- result:
+							cancel()
+						default:
+						}
+						return
+					}
 				}
 			}
 		}()
 	}
 
-	// Enviar jobs
-	go func() {
-		for _, job := range jobs {
-			jobChan <- job
-		}
-		close(jobChan)
-	}()
-
-	// Encerrar resultChan
 	go func() {
 		wg.Wait()
 		close(resultChan)
 	}()
 
-	// Captura resultado
 	for res := range resultChan {
 		return res
 	}
