@@ -8,37 +8,25 @@ import (
 	"runtime"
 )
 
-func DictionaryAttack(path string, targetHash string, hashType string) string {
-	bufferSize := runtime.NumCPU() * 100
-	jobChan := make(chan core.Job, bufferSize)
+func DictionaryAttack(
+	path string,
+	targetHash string,
+	hashType string,
+) string {
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(
+		context.Background(),
+	)
 	defer cancel()
 
+	jobChan := make(chan core.Job, runtime.NumCPU()*4)
+
 	go func() {
+
 		defer close(jobChan)
 
 		file, err := os.Open(path)
 		if err != nil {
 			return
 		}
-		defer file.Close()
-
-		scanner := bufio.NewScanner(file)
-
-		for scanner.Scan() {
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				jobChan <- core.Job{
-					Word:       scanner.Text(),
-					TargetHash: targetHash,
-					HashType:   hashType,
-				}
-			}
-		}
-	}()
-
-	return core.RunEngine(ctx, jobChan, runtime.NumCPU())
-}
+	

@@ -5,50 +5,77 @@ import (
 	"sync"
 )
 
-func RunEngine(ctx context.Context, jobChan <-chan Job, workers int) string {
-	resultChan := make(chan string, 1)
-
-	var wg sync.WaitGroup
+func RunEngine(
+	ctx context.Context,
+	jobChan <-chan Job,
+	workers int,
+	onProgress func(),
+) string {
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
+	resultChan := make(chan string, 1)
+
+	var wg sync.WaitGroup
+
+	worker := func() {
+
+		defer wg.Done()
+
+		for {
+
+			select {
+
+			case <-ctx.Done():
+				return
+
+			case job, ok := <-jobChan:
+
+				if !ok {
+					return
+				}
+
+				if onProgress != nil {
+					onProgress()
+				}
+
+				found, result := Process(job)
+
+				if !found {
+					continue
+				}
+
+				select {
+
+				case resultChan <- result:
+					cancel()
+
+				default:
+				}
+
+				return
+			}
+		}
+	}
+
 	for i := 0; i < workers; i++ {
+
 		wg.Add(1)
 
-		go func() {
-			defer wg.Done()
-
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case job, ok := <-jobChan:
-					if !ok {
-						return
-					}
-
-					found, result := Process(job)
-					if found {
-						select {
-						case resultChan <- result:
-							cancel()
-						default:
-						}
-						return
-					}
-				}
-			}
-		}()
+		go worker()
 	}
 
 	go func() {
+
 		wg.Wait()
+
 		close(resultChan)
+
 	}()
 
-	for res := range resultChan {
-		return res
+	for result := range resultChan {
+		return result
 	}
 
 	return ""

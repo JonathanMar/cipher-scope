@@ -6,9 +6,14 @@ import (
 	"runtime"
 )
 
-func BruteForceAttack(charset string, length int, targetHash string, hashType string) string {
-	bufferSize := runtime.NumCPU() * 100
-	jobChan := make(chan core.Job, bufferSize)
+func BruteForceAttack(
+	charset string,
+	length int,
+	targetHash string,
+	hashType string,
+) string {
+
+	jobChan := make(chan core.Job, runtime.NumCPU()*4)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -16,35 +21,49 @@ func BruteForceAttack(charset string, length int, targetHash string, hashType st
 	go func() {
 		defer close(jobChan)
 
-		var generate func([]byte, int)
+		buffer := make([]byte, length)
 
-		generate = func(prefix []byte, remaining int) {
+		var generate func(int)
+
+		generate = func(pos int) {
+
 			select {
 			case <-ctx.Done():
 				return
 			default:
 			}
 
-			if remaining == 0 {
-				jobChan <- core.Job{
-					Word:       string(prefix),
+			if pos == length {
+
+				word := string(buffer)
+
+				select {
+				case <-ctx.Done():
+					return
+
+				case jobChan <- core.Job{
+					Word:       word,
 					TargetHash: targetHash,
 					HashType:   hashType,
+				}:
 				}
+
 				return
 			}
 
 			for i := 0; i < len(charset); i++ {
-				next := make([]byte, len(prefix)+1)
-				copy(next, prefix)
-				next[len(prefix)] = charset[i]
-
-				generate(next, remaining-1)
+				buffer[pos] = charset[i]
+				generate(pos + 1)
 			}
 		}
 
-		generate([]byte{}, length)
+		generate(0)
 	}()
 
-	return core.RunEngine(ctx, jobChan, runtime.NumCPU())
+	return core.RunEngine(
+		ctx,
+		jobChan,
+		runtime.NumCPU(),
+		nil,
+	)
 }
