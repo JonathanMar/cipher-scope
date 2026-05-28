@@ -52,6 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initCrackBtn();
   initLogClear();
   connectSSE();
+  fetchInfo();
   log('info', 'Cipher Scope iniciado.');
 });
 
@@ -89,8 +90,11 @@ function initTabs() {
       $('mode-tabs').querySelectorAll('.mode-tab').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       attackMode = btn.dataset.mode;
-      const showBf = attackMode === 'bruteforce' || attackMode === 'auto';
+      const showBf   = attackMode === 'bruteforce' || attackMode === 'auto';
+      const showJohn = attackMode === 'john';
       bfOptions.classList.toggle('hidden', !showBf);
+      $('john-status-badge').style.display  = showJohn ? 'block' : 'none';
+      $('john-rules-label').style.display   = showJohn ? 'flex'  : 'none';
     });
   });
 }
@@ -194,12 +198,13 @@ async function startAttack(hash) {
 
   const body = {
     hash,
-    hashType:  crackHashType,
-    mode:      attackMode,
-    workers:   parseInt(crackWorkersEl.value),
-    maxLength: parseInt(crackLenEl.value),
+    hashType:   crackHashType,
+    mode:       attackMode,
+    workers:    parseInt(crackWorkersEl.value),
+    maxLength:  parseInt(crackLenEl.value),
     charset,
-    wordlist:  'wordlist.txt',
+    wordlist:   'wordlist.txt',
+    johnRules:  $('john-rules-check') ? $('john-rules-check').checked : false,
   };
 
   try {
@@ -283,7 +288,13 @@ function updateUI(s) {
   ringCircle.style.strokeDashoffset = offset;
   ringPercent.textContent = pct.toFixed(1) + '%';
 
-  const phaseLabels = { dictionary: 'Dictionary', bruteforce: 'Brute Force', '': '—' };
+  const phaseLabels = {
+    dictionary: '📖 Dictionary',
+    rules:      '🔀 Rules',
+    bruteforce: '💥 Brute Force',
+    john:       '🗡️ John',
+    '':         '—'
+  };
   ringPhase.textContent = phaseLabels[s.phase] || s.phase || '—';
 
   const isPulsing = s.status === 'running';
@@ -339,6 +350,33 @@ function clearResult() {
   resultValue.textContent = 'Ataque em andamento...';
   resultValue.className   = 'result-value';
   resultIcon.textContent  = '⚙️';
+}
+
+// ── Info (john + workers) ─────────────────────────────────────────────────────
+async function fetchInfo() {
+  try {
+    const res  = await fetch('/api/info');
+    const info = await res.json();
+    maxWorkers = info.workers || navigator.hardwareConcurrency || 4;
+    crackWorkersEl.max   = maxWorkers;
+    crackWorkersEl.value = maxWorkers;
+    workersDisplay.textContent = maxWorkers;
+    renderWorkerDots(maxWorkers, maxWorkers);
+
+    const badge = $('john-status-badge');
+    if (info.john && info.john.available) {
+      badge.style.borderColor = 'var(--success)';
+      badge.style.color       = 'var(--success)';
+      badge.style.background  = 'var(--success-dim)';
+      badge.textContent       = '✅ John disponível — ' + (info.john.version || '');
+      log('info', 'John the Ripper detectado: ' + info.john.version);
+    } else {
+      badge.style.borderColor = 'var(--error)';
+      badge.style.color       = 'var(--error)';
+      badge.style.background  = 'var(--error-dim)';
+      badge.textContent       = '❌ John não instalado — use o script scripts/setup-john-arm64.sh';
+    }
+  } catch { /* silencioso */ }
 }
 
 // ── Log ───────────────────────────────────────────────────────────────────────

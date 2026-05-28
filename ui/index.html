@@ -89,28 +89,19 @@
 
       <div class="field">
         <label class="label">Modo de Ataque</label>
-        <div class="mode-tabs" id="mode-tabs">
-          <button class="mode-tab active" data-mode="auto" id="mode-auto">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
-                    stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-            </svg>
-            Auto
-          </button>
-          <button class="mode-tab" data-mode="dictionary" id="mode-dictionary">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-              <path d="M4 19.5A2.5 2.5 0 016.5 17H20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" stroke="currentColor" stroke-width="2"/>
-            </svg>
-            Dict
-          </button>
-          <button class="mode-tab" data-mode="bruteforce" id="mode-bruteforce">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-            </svg>
-            Brute
-          </button>
+        <div class="mode-tabs" id="mode-tabs" style="flex-wrap:wrap;gap:3px;">
+          <button class="mode-tab active" data-mode="auto"      id="mode-auto"       title="Dict → Rules → Brute">⚡ Auto</button>
+          <button class="mode-tab"        data-mode="dictionary" id="mode-dictionary" title="Wordlist pura">📖 Dict</button>
+          <button class="mode-tab"        data-mode="rules"      id="mode-rules"      title="Wordlist + l33t, dígitos, símbolos">🔀 Rules</button>
+          <button class="mode-tab"        data-mode="bruteforce" id="mode-bruteforce" title="Força bruta por tamanho">💥 Brute</button>
+          <button class="mode-tab"        data-mode="john"       id="mode-john"       title="John the Ripper">🗡️ John</button>
         </div>
+        <div id="john-status-badge" style="display:none;margin-top:6px;font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid;"></div>
+        <label class="check-label" id="john-rules-label" style="display:none;margin-top:6px;">
+          <input type="checkbox" id="john-rules-check">
+          <span class="checkmark"></span>
+          Ativar regras do John (best64)
+        </label>
       </div>
 
       <!-- Brute Force Options -->

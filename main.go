@@ -33,6 +33,7 @@ func main() {
 	mux.Handle("/", http.FileServer(http.FS(stripped)))
 
 	// API
+	mux.HandleFunc("/api/info", server.HandleInfo)
 	mux.HandleFunc("/api/hash", server.HandleHash)
 	mux.HandleFunc("/api/crack", server.HandleCrack)
 	mux.HandleFunc("/api/stop", server.HandleStop)

@@ -9,46 +9,61 @@ import (
 	"strings"
 )
 
-// DictionaryAttack tenta cada palavra do arquivo wordlist contra o hash alvo.
-// Usa streaming linha a linha para preservar RAM em dispositivos limitados.
-func DictionaryAttack(
-	path string,
-	targetHash string,
-	hashType string,
-	onProgress func(),
-) string {
+func DictionaryAttack(path, targetHash, hashType string, onProgress func()) string {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	numWorkers := runtime.NumCPU()
-	jobChan := make(chan core.Job, numWorkers*4)
+	n := runtime.NumCPU()
+	jobChan := make(chan core.Job, n*4)
 
 	go func() {
 		defer close(jobChan)
+		f, err := os.Open(path)
+		if err != nil { return }
+		defer f.Close()
 
-		file, err := os.Open(path)
-		if err != nil {
-			return
-		}
-		defer file.Close()
-
-		scanner := bufio.NewScanner(file)
-		for scanner.Scan() {
-			word := strings.TrimSpace(scanner.Text())
-			if word == "" {
-				continue
-			}
+		sc := bufio.NewScanner(f)
+		for sc.Scan() {
+			word := strings.TrimSpace(sc.Text())
+			if word == "" { continue }
 			select {
-			case <-ctx.Done():
-				return
-			case jobChan <- core.Job{
-				Word:       word,
-				TargetHash: targetHash,
-				HashType:   hashType,
-			}:
+			case <-ctx.Done(): return
+			case jobChan <- core.Job{Word: word, TargetHash: targetHash, HashType: hashType}:
 			}
 		}
 	}()
 
-	return core.RunEngine(ctx, jobChan, numWorkers, onProgress)
+	return core.RunEngine(ctx, jobChan, n, onProgress)
+}
+
+// RulesAttack aplica mutações em cada palavra da wordlist antes de testar.
+// Uma wordlist de 173k palavras gera ~12M candidatos — cobertura muito maior.
+func RulesAttack(path, targetHash, hashType string, onProgress func()) string {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	n := runtime.NumCPU()
+	jobChan := make(chan core.Job, n*16)
+
+	go func() {
+		defer close(jobChan)
+		f, err := os.Open(path)
+		if err != nil { return }
+		defer f.Close()
+
+		sc := bufio.NewScanner(f)
+		for sc.Scan() {
+			word := strings.TrimSpace(sc.Text())
+			if word == "" { continue }
+
+			for _, mutation := range ApplyRules(word) {
+				select {
+				case <-ctx.Done(): return
+				case jobChan <- core.Job{Word: mutation, TargetHash: targetHash, HashType: hashType}:
+				}
+			}
+		}
+	}()
+
+	return core.RunEngine(ctx, jobChan, n, onProgress)
 }
