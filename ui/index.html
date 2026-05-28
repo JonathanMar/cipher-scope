@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cipher Scope — Hash Cracker</title>
+  <meta name="description" content="Dashboard de quebra de hash: dictionary attack e brute force com progresso em tempo real.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="bg-grid"></div>
+
+<div class="layout">
+
+  <!-- ══════════ SIDEBAR ══════════ -->
+  <aside class="sidebar">
+
+    <div class="logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2L2 7v5c0 5.25 4.17 10.17 10 11.38C17.83 22.17 22 17.25 22 12V7L12 2z"
+                stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+          <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.5"/>
+        </svg>
+      </div>
+      <div>
+        <span class="logo-name">Cipher Scope</span>
+        <span class="logo-tag">v2.0</span>
+      </div>
+    </div>
+
+    <!-- Hash Generator -->
+    <section class="card">
+      <div class="card-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+          <path d="M4 7h16M4 12h16M4 17h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        Gerador de Hash
+      </div>
+
+      <div class="field">
+        <label class="label" for="gen-password">Senha</label>
+        <input class="input" type="text" id="gen-password"
+               placeholder="Digite para gerar o hash..." autocomplete="off">
+      </div>
+
+      <div class="hash-type-tabs" id="gen-type-tabs" role="tablist" aria-label="Tipo de hash para geração">
+        <button class="tab active" data-type="md5"    id="gen-tab-md5"    role="tab">MD5</button>
+        <button class="tab"        data-type="sha1"   id="gen-tab-sha1"   role="tab">SHA1</button>
+        <button class="tab"        data-type="sha256" id="gen-tab-sha256" role="tab">SHA256</button>
+      </div>
+
+      <div class="hash-result">
+        <div class="hash-result-label">Hash gerado</div>
+        <div class="hash-value mono" id="gen-hash-value">—</div>
+        <button class="copy-btn" id="gen-copy-btn" title="Copiar hash">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+            <rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" stroke-width="2"/>
+            <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" stroke-width="2"/>
+          </svg>
+          Copiar
+        </button>
+      </div>
+    </section>
+
+    <!-- Attack Config -->
+    <section class="card">
+      <div class="card-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+        </svg>
+        Configuração do Ataque
+      </div>
+
+      <div class="field">
+        <label class="label" for="crack-hash">Hash Alvo</label>
+        <textarea class="input textarea mono" id="crack-hash"
+                  placeholder="Cole o hash aqui..." rows="2" spellcheck="false"></textarea>
+      </div>
+
+      <div class="field">
+        <label class="label">Tipo de Hash</label>
+        <div class="hash-type-tabs" id="crack-type-tabs" role="tablist" aria-label="Tipo do hash alvo">
+          <button class="tab active" data-type="md5"    id="crack-tab-md5">MD5</button>
+          <button class="tab"        data-type="sha1"   id="crack-tab-sha1">SHA1</button>
+          <button class="tab"        data-type="sha256" id="crack-tab-sha256">SHA256</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="label">Modo de Ataque</label>
+        <div class="mode-tabs" id="mode-tabs">
+          <button class="mode-tab active" data-mode="auto" id="mode-auto">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
+                    stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+            </svg>
+            Auto
+          </button>
+          <button class="mode-tab" data-mode="dictionary" id="mode-dictionary">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+              <path d="M4 19.5A2.5 2.5 0 016.5 17H20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" stroke="currentColor" stroke-width="2"/>
+            </svg>
+            Dict
+          </button>
+          <button class="mode-tab" data-mode="bruteforce" id="mode-bruteforce">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+            </svg>
+            Brute
+          </button>
+        </div>
+      </div>
+
+      <!-- Brute Force Options -->
+      <div class="bf-options" id="bf-options">
+        <div class="field">
+          <label class="label" for="crack-length">
+            Tamanho máximo
+            <span class="label-value" id="length-display">5</span>
+          </label>
+          <input type="range" class="slider" id="crack-length" min="1" max="8" value="5">
+        </div>
+
+        <div class="field">
+          <label class="label">Charset</label>
+          <div class="charset-grid">
+            <label class="check-label">
+              <input type="checkbox" id="cs-lower" checked>
+              <span class="checkmark"></span>
+              a–z
+            </label>
+            <label class="check-label">
+              <input type="checkbox" id="cs-upper">
+              <span class="checkmark"></span>
+              A–Z
+            </label>
+            <label class="check-label">
+              <input type="checkbox" id="cs-digits" checked>
+              <span class="checkmark"></span>
+              0–9
+            </label>
+            <label class="check-label">
+              <input type="checkbox" id="cs-symbols">
+              <span class="checkmark"></span>
+              !@#...
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="label" for="crack-workers">
+          Workers
+          <span class="label-value" id="workers-display" data-max-workers="1">1</span>
+        </label>
+        <input type="range" class="slider" id="crack-workers" min="1" max="8" value="4">
+      </div>
+
+      <button class="crack-btn" id="crack-btn">⚡ Iniciar Ataque</button>
+    </section>
+
+  </aside>
+
+  <!-- ══════════ MAIN PANEL ══════════ -->
+  <main class="main-panel">
+
+    <div class="top-row">
+
+      <!-- Progress Ring -->
+      <div class="card ring-card">
+        <div class="ring-wrap">
+          <svg class="ring-svg" viewBox="0 0 180 180">
+            <defs>
+              <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%"   stop-color="#00d4ff"/>
+                <stop offset="100%" stop-color="#0088ff"/>
+              </linearGradient>
+            </defs>
+            <circle class="ring-bg"   cx="90" cy="90" r="75"/>
+            <circle class="ring-fill" cx="90" cy="90" r="75"
+                    id="ring-circle"
+                    stroke-dasharray="471.24"
+                    stroke-dashoffset="471.24"/>
+          </svg>
+          <div class="ring-center">
+            <span class="ring-percent" id="ring-percent">0%</span>
+            <span class="ring-phase"   id="ring-phase">Aguardando</span>
+          </div>
+        </div>
+        <div class="status-badge" id="status-badge">
+          <div class="status-dot"></div>
+          <span id="status-text">Idle</span>
+        </div>
+        <div class="workers-info">
+          <div class="workers-dots" id="workers-dots"></div>
+          <span id="workers-label">0 workers</span>
+        </div>
+      </div>
+
+      <!-- Stats Grid -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Velocidade</div>
+          <div class="stat-value" id="stat-hashrate">—</div>
+          <div class="stat-sub">hashes / segundo</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">ETA</div>
+          <div class="stat-value mono" id="stat-eta">—</div>
+          <div class="stat-sub">tempo restante</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Decorrido</div>
+          <div class="stat-value mono" id="stat-elapsed">0s</div>
+          <div class="stat-sub">tempo total</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Tentativas</div>
+          <div class="stat-value" id="stat-progress">0</div>
+          <div class="stat-sub" id="stat-total-label">de —</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Result Banner -->
+    <div class="result-banner" id="result-banner">
+      <div>
+        <div class="result-label" id="result-label">Resultado</div>
+        <div class="result-value" id="result-value">Aguardando ataque...</div>
+      </div>
+      <div class="result-icon" id="result-icon">🔐</div>
+    </div>
+
+    <!-- Log -->
+    <div class="card log-card">
+      <div class="log-header">
+        <div class="card-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="currentColor" stroke-width="2"/>
+            <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          Log
+        </div>
+        <button class="log-clear-btn" id="log-clear-btn">Limpar</button>
+      </div>
+      <div class="log-body" id="log-body"></div>
+    </div>
+
+  </main>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

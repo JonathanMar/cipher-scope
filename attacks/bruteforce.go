@@ -6,17 +6,19 @@ import (
 	"runtime"
 )
 
+// BruteForceAttack gera todas as combinações de exatamente `length` caracteres.
 func BruteForceAttack(
 	charset string,
 	length int,
 	targetHash string,
 	hashType string,
+	onProgress func(),
 ) string {
-
-	jobChan := make(chan core.Job, runtime.NumCPU()*4)
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	numWorkers := runtime.NumCPU()
+	jobChan := make(chan core.Job, numWorkers*4)
 
 	go func() {
 		defer close(jobChan)
@@ -24,9 +26,7 @@ func BruteForceAttack(
 		buffer := make([]byte, length)
 
 		var generate func(int)
-
 		generate = func(pos int) {
-
 			select {
 			case <-ctx.Done():
 				return
@@ -34,20 +34,16 @@ func BruteForceAttack(
 			}
 
 			if pos == length {
-
 				word := string(buffer)
-
 				select {
 				case <-ctx.Done():
 					return
-
 				case jobChan <- core.Job{
 					Word:       word,
 					TargetHash: targetHash,
 					HashType:   hashType,
 				}:
 				}
-
 				return
 			}
 
@@ -60,10 +56,22 @@ func BruteForceAttack(
 		generate(0)
 	}()
 
-	return core.RunEngine(
-		ctx,
-		jobChan,
-		runtime.NumCPU(),
-		nil,
-	)
+	return core.RunEngine(ctx, jobChan, numWorkers, onProgress)
+}
+
+// BruteForceAttackUpTo tenta todos os comprimentos de 1 até maxLength.
+func BruteForceAttackUpTo(
+	charset string,
+	maxLength int,
+	targetHash string,
+	hashType string,
+	onProgress func(),
+) string {
+	for l := 1; l <= maxLength; l++ {
+		result := BruteForceAttack(charset, l, targetHash, hashType, onProgress)
+		if result != "" {
+			return result
+		}
+	}
+	return ""
 }

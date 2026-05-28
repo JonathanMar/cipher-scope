@@ -3,6 +3,7 @@ package main
 import (
 	"auditor/core"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"math"
 	"net"
@@ -11,186 +12,172 @@ import (
 	"time"
 )
 
-const address = ":9000"
-
 func main() {
+	listenAddr := flag.String("addr", ":9000", "Endereço de escuta (host:porta)")
+	flag.Parse()
 
-	listener, err := net.Listen("tcp", address)
+	listener, err := net.Listen("tcp", *listenAddr)
 	if err != nil {
 		panic(err)
 	}
 	defer listener.Close()
 
-	fmt.Println("Master listening on port 9000")
+	fmt.Println("Master ouvindo em", *listenAddr)
 
 	var (
 		workers []net.Conn
 		mu      sync.Mutex
 	)
 
-	// ===== ACCEPT WORKERS =====
+	// ===== ACEITAR WORKERS =====
 
 	go func() {
-
 		for {
-
 			conn, err := listener.Accept()
 			if err != nil {
-				continue
+				return
 			}
-
 			mu.Lock()
 			workers = append(workers, conn)
 			mu.Unlock()
-
-			fmt.Println("Worker connected:", conn.RemoteAddr())
+			fmt.Println("Worker conectado:", conn.RemoteAddr())
 		}
 	}()
 
 	// ===== INPUT =====
 
 	var (
-		targetHash string
-		hashType   string
-		length     int
+		targetHash      string
+		hashType        string
+		length          int
+		expectedWorkers int
 	)
 
-	fmt.Print("Enter hash: ")
+	fmt.Print("Hash alvo: ")
 	fmt.Scanln(&targetHash)
 
-	fmt.Print("Enter hash type (md5, sha1, sha256): ")
+	fmt.Print("Tipo de hash (md5, sha1, sha256): ")
 	fmt.Scanln(&hashType)
 
-	fmt.Print("Password length: ")
+	fmt.Print("Tamanho da senha: ")
 	fmt.Scanln(&length)
 
 	if err := core.ValidateHash(hashType, targetHash); err != nil {
-		fmt.Println("Validation error:", err)
+		fmt.Println("Erro de validação:", err)
 		return
 	}
 
 	if length < 2 {
-		fmt.Println("Minimum password length is 2")
+		fmt.Println("Tamanho mínimo da senha é 2")
 		return
 	}
 
-	var expectedWorkers int
-
-	fmt.Print("How many workers do you want to wait for? ")
+	fmt.Print("Quantos workers aguardar? ")
 	fmt.Scanln(&expectedWorkers)
 
 	// ===== CHARSET =====
 
-	// Para testes rápidos:
-	// charset := "abcdefghijklmnopqrstuvwxyz"
-
 	charset := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
-	total := uint64(
-		math.Pow(
-			float64(len(charset)),
-			float64(length),
-		),
-	)
+	total := uint64(math.Pow(float64(len(charset)), float64(length)))
 
-	// ===== WAIT WORKERS =====
+	// ===== AGUARDAR WORKERS =====
 
-	fmt.Println("Waiting for workers...")
+	fmt.Println("Aguardando workers...")
 
 	for {
-
 		mu.Lock()
 		current := len(workers)
 		mu.Unlock()
 
-		fmt.Printf(
-			"Connected workers: %d/%d\r",
-			current,
-			expectedWorkers,
-		)
+		fmt.Printf("Workers conectados: %d/%d\r", current, expectedWorkers)
 
 		if current >= expectedWorkers {
-			fmt.Println("\nAll workers connected.")
+			fmt.Println("\nTodos os workers conectados.")
 			break
 		}
 
 		time.Sleep(500 * time.Millisecond)
 	}
 
+	// Snapshot imutável da lista de workers para evitar race condition
 	mu.Lock()
-	totalWorkers := len(workers)
+	snapshot := make([]net.Conn, len(workers))
+	copy(snapshot, workers)
 	mu.Unlock()
 
-	fmt.Printf(
-		"Starting distributed brute force with %d workers\n",
-		totalWorkers,
-	)
+	totalWorkers := len(snapshot)
 
-	// ===== RESULT CHANNEL =====
+	fmt.Printf("Iniciando brute force distribuído com %d workers\n", totalWorkers)
+
+	// ===== ENCODERS POR WORKER (reutilizados entre tarefas) =====
+	// BUG CORRIGIDO: criar json.NewEncoder a cada task corrompia o stream JSON.
+
+	encoders := make([]*json.Encoder, totalWorkers)
+	for i, conn := range snapshot {
+		encoders[i] = json.NewEncoder(conn)
+	}
+
+	// ===== CANAL DE RESULTADO E PROGRESSO GLOBAL =====
 
 	resultChan := make(chan string, 1)
-
-	// ===== GLOBAL PROGRESS =====
-
 	var globalProgress atomic.Uint64
 
-	// ===== LISTEN WORKERS =====
+	// ===== ESCUTAR WORKERS =====
 
-	mu.Lock()
+	var listenerWg sync.WaitGroup
 
-	for _, worker := range workers {
+	for _, conn := range snapshot {
+		listenerWg.Add(1)
 
 		go func(conn net.Conn) {
+			defer listenerWg.Done()
 
 			decoder := json.NewDecoder(conn)
-
 			var lastProgress uint64
 
 			for {
-
 				var msg core.Message
 
 				if err := decoder.Decode(&msg); err != nil {
+					// Worker desconectou ou encerrou — saída normal
 					return
 				}
 
 				switch msg.Type {
 
 				case "progress":
-
 					delta := msg.Progress - lastProgress
 					lastProgress = msg.Progress
-
 					globalProgress.Add(delta)
 
 				case "result":
-
+					// Envia resultado sem bloquear (outro worker pode ter chegado primeiro)
 					select {
 					case resultChan <- msg.Result:
 					default:
 					}
-
 					return
 				}
 			}
-
-		}(worker)
+		}(conn)
 	}
 
-	mu.Unlock()
+	// BUG CORRIGIDO: fechar resultChan quando todos os listeners encerrarem,
+	// garantindo que o master não bloqueie para sempre quando a senha não é encontrada.
+	go func() {
+		listenerWg.Wait()
+		close(resultChan)
+	}()
 
-	// ===== DISTRIBUTE TASKS =====
+	// ===== DISTRIBUIR TAREFAS =====
 
-	fmt.Println("Distributing tasks...")
+	fmt.Println("Distribuindo tarefas...")
 
 	taskCount := 0
 
-	mu.Lock()
-
 	for _, c1 := range charset {
-
 		for _, c2 := range charset {
-
 			prefix := string(c1) + string(c2)
 
 			task := core.Task{
@@ -201,129 +188,96 @@ func main() {
 				HashType:   hashType,
 			}
 
-			worker := workers[taskCount%len(workers)]
+			workerIdx := taskCount % totalWorkers
 
-			encoder := json.NewEncoder(worker)
-
-			if err := encoder.Encode(task); err != nil {
-
-				fmt.Println(
-					"Failed to send task:",
-					err,
-				)
-
+			if err := encoders[workerIdx].Encode(task); err != nil {
+				fmt.Printf("Falha ao enviar tarefa para worker %d: %v\n", workerIdx, err)
 				continue
 			}
 
 			taskCount++
-
-			// Evita flood de socket
-			time.Sleep(2 * time.Millisecond)
 		}
 	}
 
-	mu.Unlock()
-
-	fmt.Printf(
-		"Distributed %d tasks\n",
-		taskCount,
-	)
-
-	// ===== START TIMER =====
+	fmt.Printf("Distribuídas %d tarefas\n", taskCount)
 
 	start := time.Now()
 
-	// ===== PROGRESS =====
+	// ===== PROGRESSO =====
 
 	doneProgress := make(chan struct{})
 
 	go func() {
-
 		ticker := time.NewTicker(1 * time.Second)
 		defer ticker.Stop()
 
-		for {
+		bar := make([]byte, 30)
 
+		for {
 			select {
 
 			case <-doneProgress:
 				return
 
 			case <-ticker.C:
-
 				current := globalProgress.Load()
-
 				percent := float64(current) / float64(total) * 100
 
-				hashRate := float64(current) / time.Since(start).Seconds()
+				elapsed := time.Since(start).Seconds()
+				hashRate := 0.0
+				if elapsed > 0 {
+					hashRate = float64(current) / elapsed
+				}
 
 				var eta time.Duration
-
 				if hashRate > 0 {
-
 					remaining := float64(total-current) / hashRate
-
 					eta = time.Duration(remaining) * time.Second
 				}
 
 				const barSize = 30
+				filled := int((percent / 100) * float64(barSize))
 
-				filled := int(
-					(percent / 100) * float64(barSize),
-				)
-
-				bar := ""
-
-				for i := 0; i < filled; i++ {
-					bar += "="
-				}
-
-				for i := filled; i < barSize; i++ {
-					bar += " "
+				for i := range bar {
+					if i < filled {
+						bar[i] = '='
+					} else {
+						bar[i] = ' '
+					}
 				}
 
 				fmt.Printf(
-					"\r[%s] %.6f%% | %d/%d | %.0f H/s | ETA: %s",
-					bar,
-					percent,
-					current,
-					total,
-					hashRate,
-					eta.Truncate(time.Second),
+					"\r[%s] %.4f%% | %d/%d | %.0f H/s | ETA: %s",
+					string(bar), percent, current, total,
+					hashRate, eta.Truncate(time.Second),
 				)
 			}
 		}
 	}()
 
-	// ===== WAIT RESULT =====
+	// ===== AGUARDAR RESULTADO =====
 
-	result := <-resultChan
+	result, found := <-resultChan
 
 	close(doneProgress)
 
-	elapsed := time.Since(start).Truncate(
-		time.Millisecond,
-	)
+	elapsed := time.Since(start).Truncate(time.Millisecond)
 
 	fmt.Println()
 
-	if result != "" {
-		fmt.Println("Password found:", result)
+	if found && result != "" {
+		fmt.Println("Senha encontrada:", result)
 	} else {
-		fmt.Println("Password not found")
+		fmt.Println("Senha não encontrada")
 	}
 
-	fmt.Println("Elapsed time:", elapsed)
+	fmt.Println("Tempo total:", elapsed)
 
-	// ===== CLOSE WORKERS =====
+	// ===== ENCERRAR WORKERS =====
 
-	mu.Lock()
-
-	for _, worker := range workers {
-		worker.Close()
+	for _, conn := range snapshot {
+		conn.Close()
 	}
 
-	mu.Unlock()
-
-	fmt.Println("All workers stopped.")
+	fmt.Println("Todos os workers encerrados.")
 }

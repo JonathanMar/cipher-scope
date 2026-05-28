@@ -1,71 +1,68 @@
 package main
 
 import (
-	"auditor/attacks"
-	"auditor/core"
-	"auditor/utils"
+	"embed"
+	"io/fs"
+	"log"
+	"net/http"
+	"os/exec"
+	"runtime"
+
+	"auditor/server"
+
+	goflag "flag"
 	"fmt"
-	"strings"
-	"time"
 )
 
+//go:embed ui
+var uiFiles embed.FS
+
 func main() {
+	addr := goflag.String("addr", ":8080", "Endereço do servidor web (ex: :8080 ou 0.0.0.0:8080)")
+	noBrowser := goflag.Bool("no-browser", false, "Não abrir o browser automaticamente")
+	goflag.Parse()
 
-	var targetHash string
-	var hashType string
+	stripped, err := fs.Sub(uiFiles, "ui")
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	fmt.Print("Digite o hash: ")
-	fmt.Scanln(&targetHash)
+	mux := http.NewServeMux()
 
-	fmt.Print("Digite o tipo (md5, sha1, sha256): ")
-	fmt.Scanln(&hashType)
+	// Static UI
+	mux.Handle("/", http.FileServer(http.FS(stripped)))
 
-	targetHash = strings.TrimSpace(targetHash)
-	hashType = strings.ToLower(strings.TrimSpace(hashType))
+	// API
+	mux.HandleFunc("/api/hash", server.HandleHash)
+	mux.HandleFunc("/api/crack", server.HandleCrack)
+	mux.HandleFunc("/api/stop", server.HandleStop)
+	mux.HandleFunc("/api/progress", server.HandleSSE)
 
-	if err := core.ValidateHash(hashType, targetHash); err != nil {
-		utils.Error(err.Error())
+	url := fmt.Sprintf("http://localhost%s", *addr)
+	fmt.Printf("╔══════════════════════════════════════╗\n")
+	fmt.Printf("║       Cipher Scope  Dashboard        ║\n")
+	fmt.Printf("╠══════════════════════════════════════╣\n")
+	fmt.Printf("║  URL: %-31s║\n", url)
+	fmt.Printf("╚══════════════════════════════════════╝\n")
+
+	if !*noBrowser {
+		go openBrowser(url)
+	}
+
+	log.Fatal(http.ListenAndServe(*addr, mux))
+}
+
+func openBrowser(url string) {
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "linux":
+		cmd = exec.Command("xdg-open", url)
+	case "darwin":
+		cmd = exec.Command("open", url)
+	case "windows":
+		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
+	default:
 		return
 	}
-
-	start := time.Now()
-
-	utils.Info("Iniciando dictionary attack...")
-
-	result := attacks.DictionaryAttack(
-		"wordlist.txt",
-		targetHash,
-		hashType,
-	)
-
-	if result != "" {
-		utils.Success("Senha encontrada no dicionário: " + result)
-
-		fmt.Printf(
-			"Tempo: %s\n",
-			time.Since(start),
-		)
-
-		return
-	}
-
-	utils.Info("Dictionary falhou. Iniciando brute force...")
-
-	result = attacks.BruteForceAttack(
-		"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
-		5,
-		targetHash,
-		hashType,
-	)
-
-	if result != "" {
-		utils.Success("Senha encontrada no brute force: " + result)
-	} else {
-		utils.Error("Senha não encontrada")
-	}
-
-	fmt.Printf(
-		"Tempo total: %s\n",
-		time.Since(start),
-	)
+	cmd.Start()
 }

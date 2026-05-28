@@ -20,11 +20,9 @@ func RunEngine(
 	var wg sync.WaitGroup
 
 	worker := func() {
-
 		defer wg.Done()
 
 		for {
-
 			select {
 
 			case <-ctx.Done():
@@ -36,21 +34,20 @@ func RunEngine(
 					return
 				}
 
+				found, result := Process(job)
+
+				// Progresso registrado após processamento (não antes)
 				if onProgress != nil {
 					onProgress()
 				}
-
-				found, result := Process(job)
 
 				if !found {
 					continue
 				}
 
 				select {
-
 				case resultChan <- result:
 					cancel()
-
 				default:
 				}
 
@@ -60,18 +57,13 @@ func RunEngine(
 	}
 
 	for i := 0; i < workers; i++ {
-
 		wg.Add(1)
-
 		go worker()
 	}
 
 	go func() {
-
 		wg.Wait()
-
 		close(resultChan)
-
 	}()
 
 	for result := range resultChan {

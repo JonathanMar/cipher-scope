@@ -1,2 +1,10 @@
 env/
 wordlist.txt
+
+# Binários compilados
+main
+cipher-scope
+cipher-scope-arm32
+cipher-scope-arm64
+*.exe
+*.out

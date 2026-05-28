@@ -1,240 +1,182 @@
-# 🔐 CipherScope
+<div align="center">
 
-CipherScope is a **distributed and concurrent hash cracking system** written in Go.  
-It demonstrates practical concepts of **parallel computing and distributed systems**, combining:
+<h1>🔐 Cipher Scope</h1>
 
-- Multi-core processing (goroutines)
-- Distributed execution across multiple machines (e.g., TV Boxes)
-- Task distribution via TCP sockets
-- Efficient worker coordination and early termination
+<p>Hash cracker distribuído com dashboard web em tempo real.<br>
+Escrito em Go puro — roda em qualquer máquina, incluindo <strong>TV Box (ARM)</strong>.</p>
 
-## 📌 Overview
+<img src="https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat-square&logo=go&logoColor=white"/>
+<img src="https://img.shields.io/badge/Platform-Linux%20%7C%20ARM%20%7C%20Android-informational?style=flat-square"/>
+<img src="https://img.shields.io/badge/License-MIT-green?style=flat-square"/>
 
-CipherScope supports two main attack strategies:
+</div>
 
-### 1. Dictionary Attack
-- Reads passwords from a wordlist file
-- Hashes each entry and compares with the target
+---
 
-### 2. Brute Force Attack
-- Generates all possible combinations from a given charset and length
-- Uses recursion + streaming (no full memory allocation)
+## ✨ Funcionalidades
 
-## 🧠 Architecture
+- **Dashboard Web** — interface dark mode com progresso em tempo real via SSE
+- **Gerador de Hash** — gera MD5, SHA1 e SHA256 diretamente no browser
+- **Dictionary Attack** — lê wordlist em streaming (baixo uso de RAM)
+- **Brute Force Attack** — tenta combinações de 1 até N caracteres com charset configurável
+- **Modo Auto** — dictionary primeiro, brute force como fallback
+- **Modo Distribuído** — master/worker via TCP para usar múltiplas máquinas em paralelo
+- **Cross-platform** — compila para ARM32, ARM64, x86, Windows, macOS
 
-### 🔹 Hybrid Parallelism
+---
 
-CipherScope combines:
+## 🚀 Como Usar
 
-- **Intra-node parallelism**
-  - Goroutines + channels
-  - Utilizes all CPU cores
-
-- **Inter-node parallelism**
-  - Multiple workers across devices
-  - Master distributes workload
-
-### 🔹 System Components
-
-CipherScope/
-├── master/        # Task coordinator (distributes work)
-├── worker/        # Executes tasks (runs on remote machines)
-├── core/          # Engine, jobs, and task definitions
-├── attacks/       # Dictionary and brute-force logic
-├── crypto/        # Hashing algorithms
-├── utils/         # Logging and helpers
-├── main.go        # Local (non-distributed) execution
-
-## ⚙️ Requirements
-
-- Go 1.20+
-- Machines in the same network (for distributed mode)
-
-## 🔧 Installation
-
-Clone the repository:
+### Pré-requisitos
 
 ```bash
-git clone https://github.com/your-username/cipherscope.git
-cd cipherscope
-````
+# Go 1.22+
+go version
+```
 
-## 🚀 Usage
-
-## 🖥️ 1. Run Master
+### Compilar e rodar
 
 ```bash
-go run master/main.go
+git clone https://github.com/JonathanMar/cipher-scope.git
+cd cipher-scope
+
+# Rodar localmente (abre o browser automaticamente)
+go run .
+
+# Compilar binário
+go build -o cipher-scope .
+./cipher-scope
 ```
 
-You will be prompted:
+O dashboard abre em `http://localhost:8080`.
 
-Enter hash:
-Enter hash type (md5, sha1, sha256):
+### Flags disponíveis
 
-## 📺 2. Configure Workers
-
-Edit:
-
-📁 `worker/main.go`
-
-Replace:
-
-```go
-"net.Dial("tcp", "MASTER_IP:9000")
+```
+-addr      string   Endereço de escuta (default ":8080")
+-no-browser         Não abrir o browser automaticamente
 ```
 
-With your master IP:
-
-```go
-"net.Dial("tcp", "192.168.0.10:9000")
-```
-
-## ▶️ 3. Run Workers
-
-### Option A: Local testing
+### Acesso pela rede (TV Box / outro dispositivo)
 
 ```bash
-go run worker/main.go
+# Na TV Box ou servidor:
+./cipher-scope -addr 0.0.0.0:8080 -no-browser
+
+# No celular ou PC na mesma rede, abra:
+# http://<IP-DA-TVBOX>:8080
 ```
 
-(Open multiple terminals)
+---
 
-### Option B: TV Boxes / Remote Devices
-
-#### Build for ARM:
+## 📦 Cross-compile para TV Box (ARM)
 
 ```bash
-GOOS=linux GOARCH=arm64 go build -o worker ./worker
+# ARM64 (TV Boxes modernas: Amlogic S905X3+, Rockchip RK3318...)
+GOOS=linux GOARCH=arm64 go build -o cipher-scope-arm64 .
+
+# ARM32 (TV Boxes antigas 32-bit)
+GOOS=linux GOARCH=arm GOARM=7 go build -o cipher-scope-arm32 .
+
+# Copiar para a TV Box via SCP
+scp cipher-scope-arm64 user@192.168.x.x:/home/user/
 ```
 
-#### Transfer:
+---
+
+## 🌐 Dashboard
+
+| Painel | Funcionalidade |
+|--------|---------------|
+| **Gerador de Hash** | Digite uma senha → copia o hash com 1 clique |
+| **Configuração** | Hash alvo, tipo, modo de ataque, workers, tamanho máximo, charset |
+| **Anel de Progresso** | Progresso visual em tempo real (SVG animado) |
+| **Stats** | H/s, ETA, tempo decorrido, tentativas |
+| **Resultado** | Banner de sucesso/falha com a senha encontrada |
+| **Log** | Histórico de eventos com timestamp |
+
+---
+
+## 🔌 API REST
+
+| Método | Endpoint | Descrição |
+|--------|----------|-----------|
+| `POST` | `/api/hash` | Gera hash de uma senha |
+| `POST` | `/api/crack` | Inicia um ataque |
+| `POST` | `/api/stop` | Para o ataque em andamento |
+| `GET`  | `/api/progress` | SSE — progresso em tempo real |
+
+### Exemplo: gerar hash
 
 ```bash
-scp worker user@DEVICE_IP:/home/user/
+curl -X POST http://localhost:8080/api/hash \
+  -H 'Content-Type: application/json' \
+  -d '{"password":"hello","type":"md5"}'
+
+# {"hash":"5d41402abc4b2a76b9719d911017c592"}
 ```
 
-#### Run:
+### Exemplo: iniciar ataque
 
 ```bash
-chmod +x worker
-./worker
+curl -X POST http://localhost:8080/api/crack \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "hash":      "5d41402abc4b2a76b9719d911017c592",
+    "hashType":  "md5",
+    "mode":      "auto",
+    "workers":   4,
+    "maxLength": 5,
+    "charset":   "abcdefghijklmnopqrstuvwxyz0123456789",
+    "wordlist":  "wordlist.txt"
+  }'
 ```
 
-## 🧪 Example
+---
 
-Generate a test hash:
+## 🖧 Modo Distribuído (Master / Worker)
+
+Para distribuir o brute force entre várias máquinas na rede:
 
 ```bash
-echo -n "abcde" | md5sum
+# Máquina principal (master) — aguarda workers e distribui tarefas
+go run ./master -addr :9000
+
+# Cada TV Box / máquina worker
+go run ./worker -master 192.168.0.10:9000 -workers 4
 ```
 
-Run master and input:
-
-```
-Hash: <generated hash>
-Type: md5
-```
-
-Expected output:
-
-```
-Password found: abcde
-All workers stopped.
-```
+O master divide o espaço de combinações entre os workers automaticamente.
 
 ---
 
-## 📊 Performance
-
-### Time Complexity
-
-* Dictionary Attack:
-
-  ```
-  O(n)
-  ```
-
-* Brute Force:
-
-  ```
-  O(|charset|^length)
-  ```
-
----
-
-### Distributed Speedup
+## 🗂️ Estrutura do Projeto
 
 ```
-T ≈ N / (workers × CPU cores)
-```
-
-Where:
-
-* N = total combinations
-* workers = number of machines
-
----
-
-## ⚠️ Limitations
-
-* No support for salted hashes (e.g., bcrypt, argon2)
-* Brute force grows exponentially
-* No dynamic load balancing (static distribution)
-* No fault tolerance (worker failure not handled)
-
----
-
-## 🧠 Future Improvements
-
-* 🔄 Dynamic task queue (work stealing)
-* 📊 Real-time metrics (hashes/sec)
-* 🔐 Support for bcrypt / argon2
-* ⚡ GPU acceleration
-* 🌍 gRPC instead of raw TCP
-* 🖥️ CLI interface (cobra)
-* 📈 Benchmarking tools
-
----
-
-## 🧪 Testing Tips
-
-Use small values for quick tests:
-
-```go
-charset := "abc"
-length := 3
+cipher-scope/
+├── main.go           # Servidor HTTP + embed da UI
+├── ui/               # Dashboard (HTML/CSS/JS) — embutido no binário
+├── server/           # Handlers HTTP, SSE e estado do ataque
+├── attacks/          # Dictionary e Brute Force
+├── core/             # Engine de workers, validação, tipos
+├── crypto/           # MD5, SHA1, SHA256
+├── master/           # Nó master do modo distribuído
+├── worker/           # Nó worker do modo distribuído
+└── utils/            # Logger
 ```
 
 ---
 
-## 📚 Concepts Demonstrated
+## 🔧 Hashes suportados
 
-* Goroutines and channels
-* Producer–consumer pattern
-* Context cancellation
-* TCP networking in Go
-* Distributed task scheduling
-* Parallel brute force search
-
----
-
-## 📄 License
-
-MIT License
+| Tipo | Tamanho |
+|------|---------|
+| MD5 | 32 chars |
+| SHA1 | 40 chars |
+| SHA256 | 64 chars |
 
 ---
 
-## 👨‍💻 Author
+## 📄 Licença
 
-Developed for academic purposes in **Parallel Computing**.
-
----
-
-## ⭐ Final Notes
-
-CipherScope is a **practical demonstration of distributed brute-force computation**, showing how:
-
-* Workloads can be split across machines
-* CPU cores can be fully utilized
-* Systems can scale horizontally
+MIT © [JonathanMar](https://github.com/JonathanMar)
