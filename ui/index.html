@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cipher Scope — Hash Cracker</title>
-  <meta name="description" content="Dashboard de quebra de hash: dictionary attack e brute force com progresso em tempo real.">
+  <title>Cipher Scope — Swiss Army Knife</title>
+  <meta name="description" content="Cipher Scope: quebra de hash, encode/decode, decryptor do Chrome e muito mais.">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -25,7 +25,7 @@
       </div>
       <div>
         <span class="logo-name">Cipher Scope</span>
-        <span class="logo-tag">v2.0</span>
+        <span class="logo-tag">v3.0</span>
       </div>
     </div>
 
@@ -39,7 +39,10 @@
       </div>
 
       <div class="field">
-        <label class="label" for="gen-password">Senha</label>
+        <label class="label" for="gen-password">
+          Senha
+          <span class="pwd-len-badge" id="pwd-len-badge" style="opacity:0">0 chars</span>
+        </label>
         <input class="input" type="text" id="gen-password"
                placeholder="Digite para gerar o hash..." autocomplete="off">
       </div>
@@ -48,6 +51,8 @@
         <button class="tab active" data-type="md5"    id="gen-tab-md5"    role="tab">MD5</button>
         <button class="tab"        data-type="sha1"   id="gen-tab-sha1"   role="tab">SHA1</button>
         <button class="tab"        data-type="sha256" id="gen-tab-sha256" role="tab">SHA256</button>
+        <button class="tab"        data-type="sha512" id="gen-tab-sha512" role="tab">SHA512</button>
+        <button class="tab"        data-type="ntlm"   id="gen-tab-ntlm"   role="tab">NTLM</button>
       </div>
 
       <div class="hash-result">
@@ -76,6 +81,7 @@
         <label class="label" for="crack-hash">Hash Alvo</label>
         <textarea class="input textarea mono" id="crack-hash"
                   placeholder="Cole o hash aqui..." rows="2" spellcheck="false"></textarea>
+        <div class="hash-guess" id="hash-guess"></div>
       </div>
 
       <div class="field">
@@ -84,6 +90,8 @@
           <button class="tab active" data-type="md5"    id="crack-tab-md5">MD5</button>
           <button class="tab"        data-type="sha1"   id="crack-tab-sha1">SHA1</button>
           <button class="tab"        data-type="sha256" id="crack-tab-sha256">SHA256</button>
+          <button class="tab"        data-type="sha512" id="crack-tab-sha512">SHA512</button>
+          <button class="tab"        data-type="ntlm"   id="crack-tab-ntlm">NTLM</button>
         </div>
       </div>
 
@@ -92,7 +100,7 @@
         <div class="mode-tabs" id="mode-tabs" style="flex-wrap:wrap;gap:3px;">
           <button class="mode-tab active" data-mode="auto"      id="mode-auto"       title="Dict → Rules → Brute">⚡ Auto</button>
           <button class="mode-tab"        data-mode="dictionary" id="mode-dictionary" title="Wordlist pura">📖 Dict</button>
-          <button class="mode-tab"        data-mode="rules"      id="mode-rules"      title="Wordlist + l33t, dígitos, símbolos">🔀 Rules</button>
+          <button class="mode-tab"        data-mode="rules"      id="mode-rules"      title="Wordlist + mutações">🔀 Rules</button>
           <button class="mode-tab"        data-mode="bruteforce" id="mode-bruteforce" title="Força bruta por tamanho">💥 Brute</button>
           <button class="mode-tab"        data-mode="john"       id="mode-john"       title="John the Ripper">🗡️ John</button>
         </div>
@@ -157,87 +165,223 @@
   <!-- ══════════ MAIN PANEL ══════════ -->
   <main class="main-panel">
 
-    <div class="top-row">
+    <!-- Nav Tabs -->
+    <nav class="main-nav">
+      <button class="nav-tab active" id="nav-dashboard" data-page="page-dashboard">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2"/></svg>
+        Dashboard
+      </button>
+      <button class="nav-tab" id="nav-tools" data-page="page-tools">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Ferramentas
+      </button>
+      <button class="nav-tab" id="nav-chrome" data-page="page-chrome">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/><path d="M12 8V2M12 22v-6M20.66 16l-5.2-3M8.54 11L3.34 8M20.66 8l-5.2 3M8.54 13L3.34 16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        Chrome
+      </button>
+    </nav>
 
-      <!-- Progress Ring -->
-      <div class="card ring-card">
-        <div class="ring-wrap">
-          <svg class="ring-svg" viewBox="0 0 180 180">
-            <defs>
-              <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%"   stop-color="#00d4ff"/>
-                <stop offset="100%" stop-color="#0088ff"/>
-              </linearGradient>
-            </defs>
-            <circle class="ring-bg"   cx="90" cy="90" r="75"/>
-            <circle class="ring-fill" cx="90" cy="90" r="75"
-                    id="ring-circle"
-                    stroke-dasharray="471.24"
-                    stroke-dashoffset="471.24"/>
-          </svg>
-          <div class="ring-center">
-            <span class="ring-percent" id="ring-percent">0%</span>
-            <span class="ring-phase"   id="ring-phase">Aguardando</span>
+    <!-- ── PAGE: Dashboard ── -->
+    <div class="page active" id="page-dashboard">
+
+      <div class="top-row">
+
+        <!-- Progress Ring -->
+        <div class="card ring-card">
+          <div class="ring-wrap">
+            <svg class="ring-svg" viewBox="0 0 180 180">
+              <defs>
+                <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%"   stop-color="#00d4ff"/>
+                  <stop offset="100%" stop-color="#0088ff"/>
+                </linearGradient>
+              </defs>
+              <circle class="ring-bg"   cx="90" cy="90" r="75"/>
+              <circle class="ring-fill" cx="90" cy="90" r="75"
+                      id="ring-circle"
+                      stroke-dasharray="471.24"
+                      stroke-dashoffset="471.24"/>
+            </svg>
+            <div class="ring-center">
+              <span class="ring-percent" id="ring-percent">0%</span>
+              <span class="ring-phase"   id="ring-phase">Aguardando</span>
+            </div>
+          </div>
+          <div class="status-badge" id="status-badge">
+            <div class="status-dot"></div>
+            <span id="status-text">Idle</span>
+          </div>
+          <div class="workers-info">
+            <div class="workers-dots" id="workers-dots"></div>
+            <span id="workers-label">0 workers</span>
           </div>
         </div>
-        <div class="status-badge" id="status-badge">
-          <div class="status-dot"></div>
-          <span id="status-text">Idle</span>
+
+        <!-- Stats Grid -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Velocidade</div>
+            <div class="stat-value" id="stat-hashrate">—</div>
+            <div class="stat-sub">hashes / segundo</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">ETA</div>
+            <div class="stat-value mono" id="stat-eta">—</div>
+            <div class="stat-sub">tempo restante</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Decorrido</div>
+            <div class="stat-value mono" id="stat-elapsed">0s</div>
+            <div class="stat-sub">tempo total</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Tentativas</div>
+            <div class="stat-value" id="stat-progress">0</div>
+            <div class="stat-sub" id="stat-total-label">de —</div>
+          </div>
         </div>
-        <div class="workers-info">
-          <div class="workers-dots" id="workers-dots"></div>
-          <span id="workers-label">0 workers</span>
-        </div>
+
       </div>
 
-      <!-- Stats Grid -->
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-label">Velocidade</div>
-          <div class="stat-value" id="stat-hashrate">—</div>
-          <div class="stat-sub">hashes / segundo</div>
+      <!-- Result Banner -->
+      <div class="result-banner" id="result-banner">
+        <div>
+          <div class="result-label" id="result-label">Resultado</div>
+          <div class="result-value" id="result-value">Aguardando ataque...</div>
         </div>
-        <div class="stat-card">
-          <div class="stat-label">ETA</div>
-          <div class="stat-value mono" id="stat-eta">—</div>
-          <div class="stat-sub">tempo restante</div>
+        <div class="result-icon" id="result-icon">🔐</div>
+      </div>
+
+      <!-- Log -->
+      <div class="card log-card">
+        <div class="log-header">
+          <div class="card-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="currentColor" stroke-width="2"/>
+              <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            Log
+          </div>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <button class="export-btn" id="log-export-btn">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Exportar
+            </button>
+            <button class="log-clear-btn" id="log-clear-btn">Limpar</button>
+          </div>
         </div>
-        <div class="stat-card">
-          <div class="stat-label">Decorrido</div>
-          <div class="stat-value mono" id="stat-elapsed">0s</div>
-          <div class="stat-sub">tempo total</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Tentativas</div>
-          <div class="stat-value" id="stat-progress">0</div>
-          <div class="stat-sub" id="stat-total-label">de —</div>
-        </div>
+        <div class="log-body" id="log-body"></div>
       </div>
 
     </div>
 
-    <!-- Result Banner -->
-    <div class="result-banner" id="result-banner">
-      <div>
-        <div class="result-label" id="result-label">Resultado</div>
-        <div class="result-value" id="result-value">Aguardando ataque...</div>
-      </div>
-      <div class="result-icon" id="result-icon">🔐</div>
-    </div>
-
-    <!-- Log -->
-    <div class="card log-card">
-      <div class="log-header">
+    <!-- ── PAGE: Ferramentas ── -->
+    <div class="page" id="page-tools">
+      <div class="card">
         <div class="card-title">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="currentColor" stroke-width="2"/>
-            <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-          </svg>
-          Log
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Encode / Decode
         </div>
-        <button class="log-clear-btn" id="log-clear-btn">Limpar</button>
+
+        <div class="field">
+          <label class="label">Formato</label>
+          <div class="format-tabs" id="encode-format-tabs">
+            <button class="format-tab active" data-fmt="base64">Base64</button>
+            <button class="format-tab" data-fmt="url">URL</button>
+            <button class="format-tab" data-fmt="hex">Hex</button>
+            <button class="format-tab" data-fmt="binary">Binary</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="label" for="encode-input">Entrada</label>
+          <textarea class="input mono" id="encode-input" rows="3" placeholder="Cole o texto ou valor aqui..." spellcheck="false"></textarea>
+        </div>
+
+        <div class="two-col">
+          <button class="tool-btn" id="encode-btn">🔒 Encode</button>
+          <button class="tool-btn danger" id="decode-btn">🔓 Decode</button>
+        </div>
+
+        <div class="field">
+          <label class="label" for="encode-output">
+            Resultado
+            <button class="export-btn" id="encode-copy-btn">📋 Copiar</button>
+          </label>
+          <textarea class="input mono" id="encode-output" rows="3" readonly placeholder="Resultado aparece aqui..." spellcheck="false"></textarea>
+        </div>
       </div>
-      <div class="log-body" id="log-body"></div>
+
+      <div class="card">
+        <div class="card-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/><path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          Identificador de Hash
+        </div>
+        <div class="field">
+          <label class="label" for="identify-input">Hash</label>
+          <input class="input mono" type="text" id="identify-input" placeholder="Cole um hash para identificar..." autocomplete="off">
+        </div>
+        <button class="tool-btn" id="identify-btn">🔍 Identificar</button>
+        <div id="identify-result" style="display:none;" class="hash-result">
+          <div class="hash-result-label">Possíveis tipos</div>
+          <div class="hash-guess" id="identify-candidates"></div>
+          <div style="font-size:11px;color:var(--text-3);margin-top:6px;" id="identify-meta"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PAGE: Chrome ── -->
+    <div class="page" id="page-chrome">
+      <div class="card">
+        <div class="card-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/></svg>
+          Decryptor de Senhas do Chrome
+        </div>
+
+        <div style="font-size:12px;color:var(--text-2);line-height:1.6;padding:8px 12px;background:rgba(0,212,255,0.06);border:1px solid var(--accent-glow);border-radius:8px;">
+          📂 Faça upload do arquivo <code style="color:var(--accent);font-family:'JetBrains Mono',monospace;">Login Data</code> do Chrome.<br>
+          <span style="color:var(--text-3);">Linux: <code style="font-family:'JetBrains Mono',monospace;">~/.config/google-chrome/Default/Login Data</code></span>
+        </div>
+
+        <div class="upload-zone" id="chrome-upload-zone">
+          <input type="file" id="chrome-file-input" accept=".db,.sqlite,.sqlite3,*">
+          <div class="upload-zone-icon">🗃️</div>
+          <div class="upload-zone-text">Arraste o arquivo aqui ou clique para selecionar</div>
+          <div class="upload-zone-sub">Login Data (SQLite) • qualquer tamanho</div>
+        </div>
+
+        <div class="field">
+          <label class="label" for="chrome-master-pwd">
+            Master Password
+            <span style="font-size:10px;color:var(--text-3);">padrão: peanuts</span>
+          </label>
+          <input class="input mono" type="text" id="chrome-master-pwd" placeholder="peanuts" value="peanuts">
+        </div>
+
+        <button class="tool-btn success-btn" id="chrome-decrypt-btn">🔓 Descriptografar Senhas</button>
+
+        <div id="chrome-summary" style="display:none;" class="chrome-summary">
+          <span class="chrome-count" id="chrome-count">0</span>
+          <span>senhas extraídas</span>
+          <button class="export-btn" id="chrome-export-btn" style="margin-left:auto;">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Exportar CSV
+          </button>
+        </div>
+
+        <div class="chrome-table-wrap" id="chrome-table-wrap" style="display:none;">
+          <table class="chrome-table">
+            <thead>
+              <tr>
+                <th>URL</th>
+                <th>Usuário</th>
+                <th>Senha</th>
+              </tr>
+            </thead>
+            <tbody id="chrome-table-body"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
   </main>

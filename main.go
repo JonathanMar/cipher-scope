@@ -34,10 +34,13 @@ func main() {
 
 	// API
 	mux.HandleFunc("/api/info", server.HandleInfo)
-	mux.HandleFunc("/api/hash", server.HandleHash)
+	mux.HandleFunc("/api/hash", server.HandleHashExtended)
 	mux.HandleFunc("/api/crack", server.HandleCrack)
 	mux.HandleFunc("/api/stop", server.HandleStop)
 	mux.HandleFunc("/api/progress", server.HandleSSE)
+	mux.HandleFunc("/api/encode", server.HandleEncode)
+	mux.HandleFunc("/api/identify", server.HandleIdentifyHash)
+	mux.HandleFunc("/api/chrome", server.HandleChromeDecrypt)
 
 	url := fmt.Sprintf("http://localhost%s", *addr)
 	fmt.Printf("╔══════════════════════════════════════╗\n")

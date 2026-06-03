@@ -496,3 +496,239 @@ body {
   transition: background .3s;
 }
 .w-dot.active { background: var(--accent); box-shadow: 0 0 4px var(--accent-glow); }
+
+/* ── Password Length Badge ── */
+.pwd-len-badge {
+  font-size: 10px; font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-dim);
+  border: 1px solid var(--accent-glow);
+  border-radius: 4px;
+  padding: 1px 6px;
+  margin-left: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  transition: opacity .2s;
+}
+
+/* ── Tools Panel ── */
+.tools-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px;
+  overflow-y: auto;
+  height: 100%;
+}
+
+.tool-tabs {
+  display: flex;
+  gap: 4px;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 3px;
+  flex-wrap: wrap;
+}
+
+.tool-tab {
+  flex: 1;
+  min-width: 80px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--text-2);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px; font-weight: 500;
+  padding: 7px 6px;
+  transition: all .2s;
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+}
+.tool-tab:hover { color: var(--text-1); background: var(--surface-hover); }
+.tool-tab.active { background: var(--accent); color: #000; font-weight: 700; }
+
+.tool-pane { display: none; flex-direction: column; gap: 12px; }
+.tool-pane.active { display: flex; }
+
+/* ── Encode Tool ── */
+.encode-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.encode-grid .field { grid-column: 1 / -1; }
+
+.format-tabs {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.format-tab {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-2);
+  cursor: pointer;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; font-weight: 500;
+  padding: 5px 10px;
+  transition: all .2s;
+}
+.format-tab:hover { border-color: var(--accent-glow); color: var(--text-1); }
+.format-tab.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+
+.tool-btn {
+  background: var(--accent-dim);
+  border: 1px solid var(--accent-glow);
+  border-radius: var(--radius-sm);
+  color: var(--accent);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px; font-weight: 600;
+  padding: 9px 16px;
+  transition: all .2s;
+  width: 100%;
+}
+.tool-btn:hover { background: var(--accent); color: #000; }
+.tool-btn.danger { background: rgba(255,82,82,0.1); border-color: rgba(255,82,82,0.4); color: var(--error); }
+.tool-btn.danger:hover { background: var(--error); color: #fff; }
+.tool-btn.success-btn { background: rgba(0,230,118,0.1); border-color: rgba(0,230,118,0.4); color: var(--success); }
+.tool-btn.success-btn:hover { background: var(--success); color: #000; }
+
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+/* ── Chrome Table ── */
+.chrome-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: rgba(0,0,0,0.3);
+  max-height: 340px;
+  overflow-y: auto;
+}
+.chrome-table-wrap::-webkit-scrollbar { width: 4px; height: 4px; }
+.chrome-table-wrap::-webkit-scrollbar-thumb { background: var(--border); }
+
+.chrome-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.chrome-table th {
+  position: sticky; top: 0;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(8px);
+  color: var(--text-3);
+  font-size: 10px; font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+.chrome-table td {
+  padding: 7px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  color: var(--text-1);
+  font-family: 'JetBrains Mono', monospace;
+  word-break: break-all;
+  max-width: 220px;
+}
+.chrome-table tr:hover td { background: var(--surface-hover); }
+.chrome-table td.pwd-ok { color: var(--success); }
+.chrome-table td.pwd-err { color: var(--error); font-style: italic; }
+
+.chrome-summary {
+  font-size: 12px; color: var(--text-2);
+  padding: 8px 0;
+  display: flex; align-items: center; gap: 8px;
+}
+.chrome-count {
+  font-size: 20px; font-weight: 700; color: var(--accent);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ── Upload Zone ── */
+.upload-zone {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 28px;
+  text-align: center;
+  cursor: pointer;
+  transition: all .3s;
+  color: var(--text-3);
+}
+.upload-zone:hover, .upload-zone.drag-over {
+  border-color: var(--accent-glow);
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+.upload-zone input { display: none; }
+.upload-zone-icon { font-size: 32px; margin-bottom: 8px; }
+.upload-zone-text { font-size: 13px; font-weight: 500; }
+.upload-zone-sub { font-size: 11px; margin-top: 4px; opacity: .6; }
+.upload-zone.has-file {
+  border-style: solid;
+  border-color: var(--success);
+  background: var(--success-dim);
+  color: var(--success);
+}
+
+/* ── Nav Tabs (Dashboard / Tools) ── */
+.main-nav {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+.nav-tab {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-2);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px; font-weight: 500;
+  padding: 10px 18px;
+  transition: all .2s;
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: -1px;
+}
+.nav-tab:hover { color: var(--text-1); }
+.nav-tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+
+.page { display: none; flex-direction: column; gap: 16px; }
+.page.active { display: flex; }
+
+/* ── Hash Identify Badge ── */
+.hash-guess {
+  display: flex; align-items: center; gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.hash-guess-item {
+  font-size: 10px; font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--accent-glow);
+  color: var(--accent);
+  background: var(--accent-dim);
+}
+
+/* ── Export Button ── */
+.export-btn {
+  display: flex; align-items: center; gap: 6px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-3);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 11px;
+  padding: 3px 10px;
+  transition: all .2s;
+}
+.export-btn:hover { border-color: var(--accent-glow); color: var(--accent); }
+
