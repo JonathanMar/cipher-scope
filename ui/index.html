@@ -119,7 +119,13 @@
             Tamanho máximo
             <span class="label-value" id="length-display">5</span>
           </label>
-          <input type="range" class="slider" id="crack-length" min="1" max="8" value="5">
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input type="range" class="slider" id="crack-length" min="1" max="16" value="5" style="flex:1">
+            <input type="number" id="crack-length-num" min="1" max="64" value="5"
+                   style="width:52px;background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:6px;
+                          color:var(--accent);font-family:'JetBrains Mono',monospace;font-size:13px;
+                          font-weight:600;text-align:center;padding:4px 4px;outline:none;">
+          </div>
         </div>
 
         <div class="field">

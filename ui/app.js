@@ -127,8 +127,20 @@ function initTabs() {
 
 // ── Sliders ───────────────────────────────────────────────────────────────────
 function initSliders() {
+  const numInput = $('crack-length-num');
+
+  // Slider → número
   crackLenEl.addEventListener('input', () => {
     lengthDisplay.textContent = crackLenEl.value;
+    numInput.value = crackLenEl.value;
+  });
+
+  // Número → slider (slider só vai até 16, mas o ataque aceita qualquer valor)
+  numInput.addEventListener('input', () => {
+    const v = Math.max(1, Math.min(64, parseInt(numInput.value) || 1));
+    numInput.value = v;
+    lengthDisplay.textContent = v;
+    crackLenEl.value = Math.min(v, 16); // slider limitado visualmente a 16
   });
 
   crackWorkersEl.addEventListener('input', () => {
@@ -268,7 +280,7 @@ async function startAttack(hash) {
     hashType:  crackHashType,
     mode:      attackMode,
     workers:   parseInt(crackWorkersEl.value),
-    maxLength: parseInt(crackLenEl.value),
+    maxLength: parseInt($('crack-length-num').value) || parseInt(crackLenEl.value),
     charset,
     wordlist:  'wordlist.txt',
     johnRules: $('john-rules-check') ? $('john-rules-check').checked : false,
