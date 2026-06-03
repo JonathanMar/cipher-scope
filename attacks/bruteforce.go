@@ -8,15 +8,13 @@ import (
 
 // BruteForceAttack gera todas as combinações de exatamente `length` caracteres.
 func BruteForceAttack(
+	ctx context.Context,
 	charset string,
 	length int,
 	targetHash string,
 	hashType string,
 	onProgress func(),
 ) string {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	numWorkers := runtime.NumCPU()
 	jobChan := make(chan core.Job, numWorkers*4)
 
@@ -61,6 +59,7 @@ func BruteForceAttack(
 
 // BruteForceAttackUpTo tenta todos os comprimentos de 1 até maxLength.
 func BruteForceAttackUpTo(
+	ctx context.Context,
 	charset string,
 	maxLength int,
 	targetHash string,
@@ -68,7 +67,12 @@ func BruteForceAttackUpTo(
 	onProgress func(),
 ) string {
 	for l := 1; l <= maxLength; l++ {
-		result := BruteForceAttack(charset, l, targetHash, hashType, onProgress)
+		select {
+		case <-ctx.Done():
+			return ""
+		default:
+		}
+		result := BruteForceAttack(ctx, charset, l, targetHash, hashType, onProgress)
 		if result != "" {
 			return result
 		}

@@ -9,10 +9,7 @@ import (
 	"strings"
 )
 
-func DictionaryAttack(path, targetHash, hashType string, onProgress func()) string {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
+func DictionaryAttack(ctx context.Context, path, targetHash, hashType string, onProgress func()) string {
 	n := runtime.NumCPU()
 	jobChan := make(chan core.Job, n*4)
 
@@ -38,10 +35,7 @@ func DictionaryAttack(path, targetHash, hashType string, onProgress func()) stri
 
 // RulesAttack aplica mutações em cada palavra da wordlist antes de testar.
 // Uma wordlist de 173k palavras gera ~12M candidatos — cobertura muito maior.
-func RulesAttack(path, targetHash, hashType string, onProgress func()) string {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
+func RulesAttack(ctx context.Context, path, targetHash, hashType string, onProgress func()) string {
 	n := runtime.NumCPU()
 	jobChan := make(chan core.Job, n*16)
 

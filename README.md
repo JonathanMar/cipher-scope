@@ -2,11 +2,13 @@
 
 <h1>🔐 Cipher Scope</h1>
 
-<p>Hash cracker distribuído com dashboard web em tempo real.<br>
-Escrito em Go puro — roda em qualquer máquina, incluindo <strong>TV Box (ARM)</strong>.</p>
+<p>Canivete suíço de segurança com dashboard web em tempo real.<br>
+Quebra hashes, decodifica dados, extrai senhas do Chrome e muito mais.<br>
+Escrito em <strong>Go puro</strong> — roda em qualquer máquina, incluindo <strong>TV Box (ARM)</strong>.</p>
 
 <img src="https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat-square&logo=go&logoColor=white"/>
 <img src="https://img.shields.io/badge/Platform-Linux%20%7C%20ARM%20%7C%20Android-informational?style=flat-square"/>
+<img src="https://img.shields.io/badge/Tests-38%20passing-success?style=flat-square"/>
 <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square"/>
 
 </div>
@@ -15,85 +17,201 @@ Escrito em Go puro — roda em qualquer máquina, incluindo <strong>TV Box (ARM)
 
 ## ✨ Funcionalidades
 
-- **Dashboard Web** — interface dark mode com progresso em tempo real via SSE
-- **Gerador de Hash** — gera MD5, SHA1 e SHA256 diretamente no browser
-- **Dictionary Attack** — lê wordlist em streaming (baixo uso de RAM)
-- **Brute Force Attack** — tenta combinações de 1 até N caracteres com charset configurável
-- **Modo Auto** — dictionary primeiro, brute force como fallback
-- **Modo Distribuído** — master/worker via TCP para usar múltiplas máquinas em paralelo
-- **Cross-platform** — compila para ARM32, ARM64, x86, Windows, macOS
+| Categoria | Funcionalidade |
+|-----------|---------------|
+| **Hash Cracker** | Dictionary, Rules (mutações l33t), Brute Force, John the Ripper |
+| **Gerador de Hash** | MD5, SHA1, SHA256, SHA512, NTLM — com contador de caracteres em tempo real |
+| **Identificador de Hash** | Detecta o tipo automaticamente ao colar um hash |
+| **Encode / Decode** | Base64, URL, Hexadecimal, Binário |
+| **Chrome Decrypter** | Upload do `Login Data` e extração de senhas v10/v11 (AES-CBC) |
+| **Dashboard** | Dark mode, progresso em tempo real via SSE, exportar log em .txt |
+| **Distribuído** | Master/Worker via TCP para múltiplas máquinas em paralelo |
+| **Cross-platform** | Compila para ARM32, ARM64, x86, Windows, macOS — sem CGo |
+
+---
+
+## 🛠️ Instalação do Go (pré-requisito)
+
+### Linux x86_64 (PC comum)
+
+```bash
+# Baixar e instalar Go 1.22+
+wget https://go.dev/dl/go1.22.5.linux-amd64.tar.gz
+sudo rm -rf /usr/local/go
+sudo tar -C /usr/local -xzf go1.22.5.linux-amd64.tar.gz
+
+# Adicionar ao PATH (adicione ao seu ~/.bashrc ou ~/.profile)
+export PATH=$PATH:/usr/local/go/bin
+
+# Verificar
+go version
+```
+
+### TV Box ARM64 (Amlogic S905X3+, Rockchip RK3318...)
+
+```bash
+# Baixar Go para ARM64
+wget https://go.dev/dl/go1.22.5.linux-arm64.tar.gz
+sudo rm -rf /usr/local/go
+sudo tar -C /usr/local -xzf go1.22.5.linux-arm64.tar.gz
+
+export PATH=$PATH:/usr/local/go/bin
+go version
+```
+
+### TV Box ARM32 (dispositivos 32-bit antigos)
+
+```bash
+wget https://go.dev/dl/go1.22.5.linux-armv6l.tar.gz
+sudo rm -rf /usr/local/go
+sudo tar -C /usr/local -xzf go1.22.5.linux-armv6l.tar.gz
+
+export PATH=$PATH:/usr/local/go/bin
+go version
+```
+
+### Android (Termux)
+
+```bash
+pkg update && pkg install golang git
+go version
+```
+
+> 💡 Sempre verifique a versão mais recente em [go.dev/dl](https://go.dev/dl/)
 
 ---
 
 ## 🚀 Como Usar
 
-### Pré-requisitos
+### Opção 1 — Usar binário pré-compilado (mais fácil para TV Box)
+
+Baixe o binário já compilado da [página de releases](https://github.com/JonathanMar/cipher-scope/releases):
 
 ```bash
-# Go 1.22+
-go version
+# ARM64 (TV Box moderna)
+wget https://github.com/JonathanMar/cipher-scope/releases/latest/download/cipher-scope-arm64
+chmod +x cipher-scope-arm64
+./cipher-scope-arm64 -addr 0.0.0.0:8080 -no-browser
 ```
 
-### Compilar e rodar
+### Opção 2 — Compilar do fonte
 
 ```bash
 git clone https://github.com/JonathanMar/cipher-scope.git
 cd cipher-scope
 
-# Rodar localmente (abre o browser automaticamente)
+# Baixar dependências
+go mod download
+
+# Rodar diretamente (desenvolvimento)
 go run .
 
-# Compilar binário
+# Compilar binário nativo
 go build -o cipher-scope .
 ./cipher-scope
 ```
 
-O dashboard abre em `http://localhost:8080`.
+O dashboard abre automaticamente em `http://localhost:8080`.
 
 ### Flags disponíveis
 
 ```
--addr      string   Endereço de escuta (default ":8080")
+-addr string        Endereço de escuta (default ":8080")
+                    Use "0.0.0.0:8080" para acesso pela rede
 -no-browser         Não abrir o browser automaticamente
-```
-
-### Acesso pela rede (TV Box / outro dispositivo)
-
-```bash
-# Na TV Box ou servidor:
-./cipher-scope -addr 0.0.0.0:8080 -no-browser
-
-# No celular ou PC na mesma rede, abra:
-# http://<IP-DA-TVBOX>:8080
 ```
 
 ---
 
-## 📦 Cross-compile para TV Box (ARM)
+## 📦 Cross-compile (compilar na sua máquina, rodar na TV Box)
 
 ```bash
-# ARM64 (TV Boxes modernas: Amlogic S905X3+, Rockchip RK3318...)
+# ARM64 — TV Boxes modernas (Amlogic S905X3+, Rockchip RK3318, RK3399...)
 GOOS=linux GOARCH=arm64 go build -o cipher-scope-arm64 .
 
-# ARM32 (TV Boxes antigas 32-bit)
+# ARM32 — TV Boxes antigas 32-bit (GOARM=7 para Cortex-A7/A9)
 GOOS=linux GOARCH=arm GOARM=7 go build -o cipher-scope-arm32 .
 
 # Copiar para a TV Box via SCP
 scp cipher-scope-arm64 user@192.168.x.x:/home/user/
 ```
 
+> ✅ **Sem CGo:** o projeto usa `modernc.org/sqlite` (SQLite em Go puro), portanto cross-compile funciona sem precisar de toolchain C para ARM.
+
 ---
 
-## 🌐 Dashboard
+## 🌐 Acesso pela rede (TV Box / outro dispositivo)
+
+```bash
+# Na TV Box — iniciar sem abrir browser
+./cipher-scope-arm64 -addr 0.0.0.0:8080 -no-browser
+
+# No celular, PC ou tablet na mesma rede Wi-Fi:
+# Abra: http://<IP-DA-TVBOX>:8080
+```
+
+Para descobrir o IP da TV Box:
+```bash
+ip addr show | grep "inet "
+# ou
+hostname -I
+```
+
+---
+
+## 🗂️ Dashboard — Abas
+
+### 📊 Dashboard (ataque)
 
 | Painel | Funcionalidade |
 |--------|---------------|
-| **Gerador de Hash** | Digite uma senha → copia o hash com 1 clique |
-| **Configuração** | Hash alvo, tipo, modo de ataque, workers, tamanho máximo, charset |
-| **Anel de Progresso** | Progresso visual em tempo real (SVG animado) |
+| **Gerador de Hash** | Digite → hash gerado ao vivo com **contador de caracteres** |
+| **Configuração** | Hash alvo, tipo, modo, workers, **tamanho máximo até 64** |
+| **Identificador** | Cola o hash → detecta MD5/NTLM/SHA1/SHA256/SHA512 automaticamente |
+| **Anel de Progresso** | SVG animado com % em tempo real |
 | **Stats** | H/s, ETA, tempo decorrido, tentativas |
 | **Resultado** | Banner de sucesso/falha com a senha encontrada |
-| **Log** | Histórico de eventos com timestamp |
+| **Log** | Histórico com timestamp + botão **Exportar .txt** |
+
+### 🔧 Ferramentas
+
+| Ferramenta | Formatos |
+|-----------|---------|
+| **Encode / Decode** | Base64, URL, Hexadecimal, Binário |
+| **Identificador de Hash** | MD5, NTLM, SHA1, SHA256, SHA512 |
+
+### 🌐 Chrome
+
+Upload do arquivo `Login Data` do Chrome para extrair senhas salvas:
+- **Linux:** `~/.config/google-chrome/Default/Login Data`
+- **Chromium:** `~/.config/chromium/Default/Login Data`
+- Campo de **master password** configurável (padrão Linux: `peanuts`)
+- Tabela com URL, usuário e senha descriptografada
+- Exportar tudo como **CSV**
+
+---
+
+## 🔐 Hashes suportados
+
+| Tipo | Tamanho | Uso comum |
+|------|---------|-----------|
+| MD5 | 32 hex | Legado, BD antigos |
+| SHA1 | 40 hex | Git, certificados antigos |
+| SHA256 | 64 hex | TLS, JWT, Linux shadow |
+| SHA512 | 128 hex | Linux shadow ($6$), APIs |
+| NTLM | 32 hex | Windows / Active Directory |
+
+---
+
+## ⚔️ Modos de Ataque
+
+| Modo | Descrição |
+|------|-----------|
+| **⚡ Auto** | Tenta: Dictionary → Rules → Brute Force |
+| **📖 Dict** | Wordlist pura (`wordlist.txt`) |
+| **🔀 Rules** | Wordlist + mutações (l33t, sufixos, capitalização) |
+| **💥 Brute** | Todas combinações de 1 até N chars (configurável até 64) |
+| **🗡️ John** | John the Ripper externo (se instalado) |
 
 ---
 
@@ -101,24 +219,41 @@ scp cipher-scope-arm64 user@192.168.x.x:/home/user/
 
 | Método | Endpoint | Descrição |
 |--------|----------|-----------|
-| `POST` | `/api/hash` | Gera hash de uma senha |
+| `POST` | `/api/hash` | Gera hash (md5/sha1/sha256/sha512/ntlm) |
 | `POST` | `/api/crack` | Inicia um ataque |
 | `POST` | `/api/stop` | Para o ataque em andamento |
 | `GET`  | `/api/progress` | SSE — progresso em tempo real |
+| `POST` | `/api/encode` | Encode/Decode (base64/url/hex/binary) |
+| `POST` | `/api/identify` | Identifica o tipo de um hash |
+| `POST` | `/api/chrome` | Extrai senhas do Chrome (multipart/form-data) |
+| `GET`  | `/api/info` | Info do sistema (workers, John disponível) |
 
-### Exemplo: gerar hash
+### Exemplos
 
 ```bash
+# Gerar hash SHA512
 curl -X POST http://localhost:8080/api/hash \
   -H 'Content-Type: application/json' \
-  -d '{"password":"hello","type":"md5"}'
+  -d '{"password":"hello","type":"sha512"}'
 
-# {"hash":"5d41402abc4b2a76b9719d911017c592"}
-```
+# Gerar hash NTLM (Windows/AD)
+curl -X POST http://localhost:8080/api/hash \
+  -H 'Content-Type: application/json' \
+  -d '{"password":"Password1","type":"ntlm"}'
 
-### Exemplo: iniciar ataque
+# Identificar tipo de hash
+curl -X POST http://localhost:8080/api/identify \
+  -H 'Content-Type: application/json' \
+  -d '{"hash":"5d41402abc4b2a76b9719d911017c592"}'
+# {"candidates":["md5","ntlm"],"isHex":true,"length":32}
 
-```bash
+# Encode Base64
+curl -X POST http://localhost:8080/api/encode \
+  -H 'Content-Type: application/json' \
+  -d '{"value":"hello world","format":"base64","action":"encode"}'
+# {"result":"aGVsbG8gd29ybGQ="}
+
+# Iniciar ataque
 curl -X POST http://localhost:8080/api/crack \
   -H 'Content-Type: application/json' \
   -d '{
@@ -126,23 +261,26 @@ curl -X POST http://localhost:8080/api/crack \
     "hashType":  "md5",
     "mode":      "auto",
     "workers":   4,
-    "maxLength": 5,
+    "maxLength": 6,
     "charset":   "abcdefghijklmnopqrstuvwxyz0123456789",
     "wordlist":  "wordlist.txt"
   }'
+
+# Parar ataque
+curl -X POST http://localhost:8080/api/stop
 ```
 
 ---
 
 ## 🖧 Modo Distribuído (Master / Worker)
 
-Para distribuir o brute force entre várias máquinas na rede:
+Para distribuir o brute force entre várias máquinas (ex: várias TV Boxes):
 
 ```bash
 # Máquina principal (master) — aguarda workers e distribui tarefas
 go run ./master -addr :9000
 
-# Cada TV Box / máquina worker
+# Cada TV Box / máquina worker (substituir IP pelo do master)
 go run ./worker -master 192.168.0.10:9000 -workers 4
 ```
 
@@ -150,30 +288,52 @@ O master divide o espaço de combinações entre os workers automaticamente.
 
 ---
 
-## 🗂️ Estrutura do Projeto
+## 🧪 Testes
 
-```
-cipher-scope/
-├── main.go           # Servidor HTTP + embed da UI
-├── ui/               # Dashboard (HTML/CSS/JS) — embutido no binário
-├── server/           # Handlers HTTP, SSE e estado do ataque
-├── attacks/          # Dictionary e Brute Force
-├── core/             # Engine de workers, validação, tipos
-├── crypto/           # MD5, SHA1, SHA256
-├── master/           # Nó master do modo distribuído
-├── worker/           # Nó worker do modo distribuído
-└── utils/            # Logger
+```bash
+# Rodar todos os testes
+go test ./...
+
+# Com detalhes
+go test ./crypto/... ./core/... ./server/... -v
+
+# Resultado esperado: 38 testes, todos PASS
 ```
 
 ---
 
-## 🔧 Hashes suportados
+## 🗂️ Estrutura do Projeto
 
-| Tipo | Tamanho |
-|------|---------|
-| MD5 | 32 chars |
-| SHA1 | 40 chars |
-| SHA256 | 64 chars |
+```
+cipher-scope/
+├── main.go               # Servidor HTTP + embed da UI
+├── ui/                   # Dashboard (HTML/CSS/JS) — embutido no binário
+│   ├── index.html        # 3 abas: Dashboard, Ferramentas, Chrome
+│   ├── style.css
+│   └── app.js
+├── server/               # Handlers HTTP, SSE, estado do ataque
+│   ├── server.go         # /api/crack, /api/stop, /api/progress, /api/info
+│   └── tools_handler.go  # /api/hash, /api/encode, /api/identify, /api/chrome
+├── attacks/              # Motores de ataque
+│   ├── dictionary.go     # Wordlist streaming
+│   ├── rules.go          # Mutações l33t, sufixos, capitalização
+│   ├── bruteforce.go     # Brute force paralelo com workers
+│   ├── john.go           # Integração com John the Ripper
+│   └── browser.go        # Extração de credenciais do Chrome (CLI)
+├── core/                 # Engine de workers, validação, tipos
+├── crypto/               # MD5, SHA1, SHA256, SHA512, NTLM, Chrome AES
+├── master/               # Nó master do modo distribuído
+├── worker/               # Nó worker do modo distribuído
+└── utils/                # Logger
+```
+
+---
+
+## ⚠️ Aviso Legal
+
+Esta ferramenta é destinada exclusivamente a **testes de segurança autorizados**, **CTFs**, **recuperação de senhas próprias** e fins educacionais.
+
+O uso não autorizado contra sistemas de terceiros é ilegal e antiético. O autor não se responsabiliza pelo uso indevido.
 
 ---
 

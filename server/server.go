@@ -180,7 +180,7 @@ func HandleCrack(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "attack already running", http.StatusConflict)
 		return
 	}
-	_, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	doneCh := make(chan struct{})
 	state.status = StatusRunning
 	state.cancel = cancel
@@ -214,31 +214,43 @@ func HandleCrack(w http.ResponseWriter, r *http.Request) {
 
 		var result string
 
-		// ── Dictionary ────────────────────────────────────────────────
+		// ── Dictionary ─────────────────────────────────────────────────
 		if req.Mode == "dictionary" || req.Mode == "auto" {
 			setPhase("dictionary", 0)
-			result = attacks.DictionaryAttack(req.Wordlist, req.Hash, req.HashType, onProgress)
+			result = attacks.DictionaryAttack(ctx, req.Wordlist, req.Hash, req.HashType, onProgress)
 		}
 
 		// ── Rules ─────────────────────────────────────────────────────
 		if result == "" && (req.Mode == "rules" || req.Mode == "auto") {
-			setPhase("rules", 0)
-			result = attacks.RulesAttack(req.Wordlist, req.Hash, req.HashType, onProgress)
+			select {
+			case <-ctx.Done():
+			default:
+				setPhase("rules", 0)
+				result = attacks.RulesAttack(ctx, req.Wordlist, req.Hash, req.HashType, onProgress)
+			}
 		}
 
-		// ── John ──────────────────────────────────────────────────────
+		// ── John ───────────────────────────────────────────────────────
 		if result == "" && req.Mode == "john" {
-			setPhase("john", 0)
-			r2, err := attacks.JohnAttack(req.Wordlist, req.Hash, req.HashType, req.JohnRules)
-			if err == nil {
-				result = r2
+			select {
+			case <-ctx.Done():
+			default:
+				setPhase("john", 0)
+				r2, err := attacks.JohnAttack(req.Wordlist, req.Hash, req.HashType, req.JohnRules)
+				if err == nil {
+					result = r2
+				}
 			}
 		}
 
 		// ── Brute Force ───────────────────────────────────────────────
 		if result == "" && (req.Mode == "bruteforce" || req.Mode == "auto") {
-			setPhase("bruteforce", bfTotal)
-			result = attacks.BruteForceAttackUpTo(req.Charset, req.MaxLength, req.Hash, req.HashType, onProgress)
+			select {
+			case <-ctx.Done():
+			default:
+				setPhase("bruteforce", bfTotal)
+				result = attacks.BruteForceAttackUpTo(ctx, req.Charset, req.MaxLength, req.Hash, req.HashType, onProgress)
+			}
 		}
 
 		state.mu.Lock()
