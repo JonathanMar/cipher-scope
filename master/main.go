@@ -7,30 +7,44 @@ import (
 	"fmt"
 	"math"
 	"net"
+	"os"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 )
 
 func main() {
-	listenAddr := flag.String("addr", ":9000", "Endereço de escuta (host:porta)")
+	listenAddr    := flag.String("addr",    ":9000",  "Endereço de escuta (host:porta)")
+	hashFlag      := flag.String("hash",    "",       "Hash alvo a quebrar")
+	hashTypeFlag  := flag.String("type",    "",       "Tipo de hash: md5, sha1, sha256, sha512, ntlm")
+	lengthFlag    := flag.Int("length",     0,        "Tamanho máximo da senha")
+	workersFlag   := flag.Int("workers",   1,        "Número de workers a aguardar")
+	charsetFlag   := flag.String("charset", "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+		"Charset para brute force")
 	flag.Parse()
+
+	// ===== BANNER =====
+	fmt.Println("╔══════════════════════════════════════╗")
+	fmt.Println("║    Cipher Scope — Master Node        ║")
+	fmt.Println("╠══════════════════════════════════════╣")
+	fmt.Printf( "║  Escutando em: %-23s║\n", *listenAddr)
+	fmt.Println("╚══════════════════════════════════════╝")
+	fmt.Println()
 
 	listener, err := net.Listen("tcp", *listenAddr)
 	if err != nil {
-		panic(err)
+		fmt.Fprintln(os.Stderr, "Erro ao iniciar listener:", err)
+		os.Exit(1)
 	}
 	defer listener.Close()
-
-	fmt.Println("Master ouvindo em", *listenAddr)
 
 	var (
 		workers []net.Conn
 		mu      sync.Mutex
 	)
 
-	// ===== ACEITAR WORKERS =====
-
+	// ===== ACEITAR WORKERS EM BACKGROUND =====
 	go func() {
 		for {
 			conn, err := listener.Accept()
@@ -40,67 +54,84 @@ func main() {
 			mu.Lock()
 			workers = append(workers, conn)
 			mu.Unlock()
-			fmt.Println("Worker conectado:", conn.RemoteAddr())
+			fmt.Println("  ✅ Worker conectado:", conn.RemoteAddr())
 		}
 	}()
 
-	// ===== INPUT =====
+	// ===== COLETAR PARÂMETROS (CLI ou interativo) =====
 
-	var (
-		targetHash      string
-		hashType        string
-		length          int
-		expectedWorkers int
-	)
+	targetHash     := *hashFlag
+	hashType       := *hashTypeFlag
+	length         := *lengthFlag
+	expectedWorkers := *workersFlag
 
-	fmt.Print("Hash alvo: ")
-	fmt.Scanln(&targetHash)
+	if targetHash == "" {
+		fmt.Print("Hash alvo: ")
+		fmt.Scanln(&targetHash)
+	}
 
-	fmt.Print("Tipo de hash (md5, sha1, sha256): ")
-	fmt.Scanln(&hashType)
+	if hashType == "" {
+		fmt.Print("Tipo de hash (md5, sha1, sha256, sha512, ntlm): ")
+		fmt.Scanln(&hashType)
+	}
+	hashType = strings.ToLower(strings.TrimSpace(hashType))
 
-	fmt.Print("Tamanho da senha: ")
-	fmt.Scanln(&length)
+	if length == 0 {
+		fmt.Print("Tamanho da senha: ")
+		fmt.Scanln(&length)
+	}
+
+	if *workersFlag == 1 && *hashFlag == "" {
+		// Só pergunta se não veio nenhuma flag CLI
+		fmt.Print("Quantos workers aguardar? ")
+		fmt.Scanln(&expectedWorkers)
+	}
+
+	// ===== VALIDAR =====
 
 	if err := core.ValidateHash(hashType, targetHash); err != nil {
-		fmt.Println("Erro de validação:", err)
-		return
+		fmt.Fprintln(os.Stderr, "Erro de validação:", err)
+		os.Exit(1)
 	}
 
 	if length < 2 {
-		fmt.Println("Tamanho mínimo da senha é 2")
-		return
+		fmt.Fprintln(os.Stderr, "Tamanho mínimo da senha é 2")
+		os.Exit(1)
 	}
 
-	fmt.Print("Quantos workers aguardar? ")
-	fmt.Scanln(&expectedWorkers)
+	charset := *charsetFlag
 
-	// ===== CHARSET =====
-
-	charset := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	// Resumo do ataque
+	fmt.Println()
+	fmt.Printf("  Hash:    %s\n", targetHash)
+	fmt.Printf("  Tipo:    %s\n", hashType)
+	fmt.Printf("  Tamanho: %d\n", length)
+	fmt.Printf("  Workers: %d\n", expectedWorkers)
+	fmt.Printf("  Charset: %s\n", charset)
+	fmt.Println()
 
 	total := uint64(math.Pow(float64(len(charset)), float64(length)))
 
 	// ===== AGUARDAR WORKERS =====
 
-	fmt.Println("Aguardando workers...")
+	fmt.Printf("Aguardando %d worker(s)...\n", expectedWorkers)
 
 	for {
 		mu.Lock()
 		current := len(workers)
 		mu.Unlock()
 
-		fmt.Printf("Workers conectados: %d/%d\r", current, expectedWorkers)
+		fmt.Printf("  Workers conectados: %d/%d\r", current, expectedWorkers)
 
 		if current >= expectedWorkers {
-			fmt.Println("\nTodos os workers conectados.")
+			fmt.Printf("\n  Todos os workers conectados.\n\n")
 			break
 		}
 
 		time.Sleep(500 * time.Millisecond)
 	}
 
-	// Snapshot imutável da lista de workers para evitar race condition
+	// Snapshot imutável para evitar race condition
 	mu.Lock()
 	snapshot := make([]net.Conn, len(workers))
 	copy(snapshot, workers)
@@ -108,11 +139,8 @@ func main() {
 
 	totalWorkers := len(snapshot)
 
-	fmt.Printf("Iniciando brute force distribuído com %d workers\n", totalWorkers)
-
-	// ===== ENCODERS POR WORKER (reutilizados entre tarefas) =====
+	// ===== ENCODERS POR WORKER =====
 	// BUG CORRIGIDO: criar json.NewEncoder a cada task corrompia o stream JSON.
-
 	encoders := make([]*json.Encoder, totalWorkers)
 	for i, conn := range snapshot {
 		encoders[i] = json.NewEncoder(conn)
@@ -172,7 +200,7 @@ func main() {
 
 	// ===== DISTRIBUIR TAREFAS =====
 
-	fmt.Println("Distribuindo tarefas...")
+	fmt.Printf("Distribuindo tarefas entre %d worker(s)...\n", totalWorkers)
 
 	taskCount := 0
 
@@ -199,11 +227,11 @@ func main() {
 		}
 	}
 
-	fmt.Printf("Distribuídas %d tarefas\n", taskCount)
+	fmt.Printf("  %d tarefas distribuídas\n\n", taskCount)
 
 	start := time.Now()
 
-	// ===== PROGRESSO =====
+	// ===== BARRA DE PROGRESSO =====
 
 	doneProgress := make(chan struct{})
 
@@ -247,7 +275,7 @@ func main() {
 				}
 
 				fmt.Printf(
-					"\r[%s] %.4f%% | %d/%d | %.0f H/s | ETA: %s",
+					"\r[%s] %.2f%% | %d/%d | %.0f H/s | ETA: %s",
 					string(bar), percent, current, total,
 					hashRate, eta.Truncate(time.Second),
 				)
@@ -264,14 +292,15 @@ func main() {
 	elapsed := time.Since(start).Truncate(time.Millisecond)
 
 	fmt.Println()
+	fmt.Println()
 
 	if found && result != "" {
-		fmt.Println("Senha encontrada:", result)
+		fmt.Printf("  ✅ Senha encontrada: %s\n", result)
 	} else {
-		fmt.Println("Senha não encontrada")
+		fmt.Println("  ❌ Senha não encontrada")
 	}
 
-	fmt.Println("Tempo total:", elapsed)
+	fmt.Printf("  ⏱  Tempo total: %s\n", elapsed)
 
 	// ===== ENCERRAR WORKERS =====
 
@@ -279,5 +308,5 @@ func main() {
 		conn.Close()
 	}
 
-	fmt.Println("Todos os workers encerrados.")
+	fmt.Println("  Todos os workers encerrados.")
 }
