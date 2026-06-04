@@ -452,19 +452,58 @@ curl -X POST http://localhost:8080/api/stop
 
 ## 🖧 Modo Distribuído (Master / Worker)
 
-Para distribuir o brute force entre várias máquinas (ex: várias TV Boxes):
-
-```bash
-# Máquina principal (master) — aguarda workers e distribui tarefas
-go run ./master -addr :9000
-
-# Cada TV Box / máquina worker (substituir IP pelo do master)
-go run ./worker -master 192.168.0.10:9000 -workers 4
-```
-
 O master divide o espaço de combinações entre os workers automaticamente.
 
+### Master — flags disponíveis
+
+| Flag | Padrão | Descrição |
+|------|--------|-----------|
+| `-addr` | `:9000` | Endereço de escuta TCP |
+| `-hash` | — | Hash alvo a quebrar |
+| `-type` | — | Tipo: `md5`, `sha1`, `sha256`, `sha512`, `ntlm` |
+| `-length` | — | Tamanho da senha |
+| `-workers` | `1` | Qtd. de workers a aguardar antes de iniciar |
+| `-charset` | `a-zA-Z0-9` | Charset para brute force |
+
+### Worker — flags disponíveis
+
+| Flag | Padrão | Descrição |
+|------|--------|-----------|
+| `-master` | `192.168.0.66:9000` | Endereço do master |
+| `-workers` | núm. de CPUs | Goroutines locais de processamento |
+
 ---
+
+### Uso não-interativo (recomendado para scripts e SSH)
+
+```bash
+# Master — passar tudo via flags (sem input interativo)
+go run ./master \
+  -addr    :9000 \
+  -hash    c899a91880ee511c03f5810cf9eaa022 \
+  -type    md5 \
+  -length  10 \
+  -workers 2
+
+# Cada worker — conectar ao master
+go run ./worker -master 192.168.0.100:9000 -workers 4
+```
+
+### Uso interativo (fallback — pede os dados no terminal)
+
+```bash
+# Master sem flags — solicita hash, tipo e tamanho interativamente
+go run ./master -addr :9000
+
+# Worker
+go run ./worker -master 192.168.0.100:9000 -workers 4
+```
+
+> 💡 **Ordem de inicialização:** sempre inicie o **master antes dos workers**.  
+> Os workers aguardam conexão e reconectam automaticamente com backoff exponencial.
+
+---
+
 
 ## 🧪 Testes
 
