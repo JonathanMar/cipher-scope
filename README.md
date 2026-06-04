@@ -123,41 +123,134 @@ O dashboard abre automaticamente em `http://localhost:8080`.
 
 ---
 
+## 📺 Guia completo — Rodando na TV Box
+
+> Testado em **Tanix TX6** (Allwinner H6, ARM64) com Linux/Android + Termux.  
+> Funciona em qualquer TV Box com ARM64 ou ARM32.
+
+### Passo 1 — Descobrir a arquitetura da TV Box
+
+```bash
+uname -m
+```
+
+| Resultado | Binário a usar |
+|-----------|---------------|
+| `aarch64` | `cipher-scope-arm64` ✅ (maioria das TV Boxes modernas) |
+| `armv7l`  | `cipher-scope-arm32` |
+| `armv8l`  | `cipher-scope-arm64` |
+
+### Passo 2 — Baixar o binário correto
+
+```bash
+# ARM64 (ex: Tanix TX6, X96 Max, H96 Max...)
+wget https://github.com/JonathanMar/cipher-scope/releases/latest/download/cipher-scope-arm64
+
+# ARM32 (TV Boxes antigas 32-bit)
+wget https://github.com/JonathanMar/cipher-scope/releases/latest/download/cipher-scope-arm32
+```
+
+### Passo 3 — Dar permissão de execução
+
+```bash
+chmod +x cipher-scope-arm64
+```
+
+### Passo 4 — Iniciar o servidor
+
+> ⚠️ **Importante:** use sempre `0.0.0.0` como host — não use o IP fixo da interface.  
+> `0.0.0.0` significa "ouvir em todas as interfaces de rede".
+
+```bash
+./cipher-scope-arm64 -addr 0.0.0.0:8080 -no-browser
+```
+
+O terminal vai exibir:
+
+```
+╔══════════════════════════════════════╗
+║       Cipher Scope  Dashboard        ║
+╠══════════════════════════════════════╣
+║  URL: http://localhost:8080          ║
+╚══════════════════════════════════════╝
+```
+
+### Passo 5 — Descobrir o IP da TV Box
+
+Em outro terminal (ou via SSH), rode:
+
+```bash
+hostname -I
+# Exemplo de saída: 192.168.0.113 (esse é o IP da TV Box na rede)
+```
+
+### Passo 6 — Acessar o dashboard
+
+No **celular, PC ou tablet** conectado na **mesma rede Wi-Fi**, abra o navegador:
+
+```
+http://<IP-DA-TVBOX>:8080
+
+# Exemplo:
+http://192.168.0.113:8080
+```
+
+O dashboard Cipher Scope abre com todas as funcionalidades disponíveis remotamente.
+
+---
+
+### 🔌 Controlar a TV Box remotamente via SSH
+
+Se a TV Box tiver SSH habilitado, você pode gerenciar tudo pelo PC:
+
+```bash
+# Conectar na TV Box
+ssh usuario@192.168.0.113
+
+# Copiar o binário do PC para a TV Box
+scp cipher-scope-arm64 usuario@192.168.0.113:~/
+
+# Iniciar em background (continua rodando após fechar o SSH)
+nohup ./cipher-scope-arm64 -addr 0.0.0.0:8080 -no-browser > cipher.log 2>&1 &
+
+# Ver o log
+tail -f cipher.log
+
+# Parar o servidor
+pkill cipher-scope-arm64
+```
+
+---
+
+### ⚠️ Erros comuns e soluções
+
+| Erro | Causa | Solução |
+|------|-------|---------|
+| `bind: cannot assign requested address` | Passou um IP que não pertence a esta máquina | Use `-addr 0.0.0.0:8080` |
+| `permission denied` | Binário sem permissão de execução | `chmod +x cipher-scope-arm64` |
+| `exec format error` | Binário errado (ARM32 numa ARM64 ou vice-versa) | Verifique com `uname -m` e baixe o binário correto |
+| Dashboard não abre no celular | Firewall bloqueando a porta | `sudo ufw allow 8080` ou desative o firewall |
+| `no such file or directory` | Binário não está no diretório atual | `ls -la` para verificar e use `./` antes do nome |
+
+---
+
 ## 📦 Cross-compile (compilar na sua máquina, rodar na TV Box)
 
 ```bash
 # ARM64 — TV Boxes modernas (Amlogic S905X3+, Rockchip RK3318, RK3399...)
-GOOS=linux GOARCH=arm64 go build -o cipher-scope-arm64 .
+GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o cipher-scope-arm64 .
 
 # ARM32 — TV Boxes antigas 32-bit (GOARM=7 para Cortex-A7/A9)
-GOOS=linux GOARCH=arm GOARM=7 go build -o cipher-scope-arm32 .
+GOOS=linux GOARCH=arm GOARM=7 go build -ldflags="-s -w" -o cipher-scope-arm32 .
 
 # Copiar para a TV Box via SCP
-scp cipher-scope-arm64 user@192.168.x.x:/home/user/
+scp cipher-scope-arm64 usuario@192.168.x.x:~/
 ```
 
 > ✅ **Sem CGo:** o projeto usa `modernc.org/sqlite` (SQLite em Go puro), portanto cross-compile funciona sem precisar de toolchain C para ARM.
 
 ---
 
-## 🌐 Acesso pela rede (TV Box / outro dispositivo)
-
-```bash
-# Na TV Box — iniciar sem abrir browser
-./cipher-scope-arm64 -addr 0.0.0.0:8080 -no-browser
-
-# No celular, PC ou tablet na mesma rede Wi-Fi:
-# Abra: http://<IP-DA-TVBOX>:8080
-```
-
-Para descobrir o IP da TV Box:
-```bash
-ip addr show | grep "inet "
-# ou
-hostname -I
-```
-
----
 
 ## 🗂️ Dashboard — Abas
 
