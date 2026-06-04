@@ -128,7 +128,20 @@ O dashboard abre automaticamente em `http://localhost:8080`.
 > Testado em **Tanix TX6** (Allwinner H6, ARM64) com Linux/Android + Termux.  
 > Funciona em qualquer TV Box com ARM64 ou ARM32.
 
-### Passo 1 — Descobrir a arquitetura da TV Box
+Existem dois modos de uso:
+
+| Modo | Quando usar |
+|------|------------|
+| **Standalone** | Uma TV Box rodando o dashboard sozinha — acesse pelo celular/PC na rede |
+| **Distribuído** | Várias TV Boxes como workers + PC como master — distribuem o brute force em paralelo |
+
+---
+
+### 🖥️ Modo Standalone — TV Box como servidor do dashboard
+
+Neste modo a TV Box roda o Cipher Scope completo e você acessa o dashboard de qualquer dispositivo na rede.
+
+#### Passo 1 — Descobrir a arquitetura da TV Box
 
 ```bash
 uname -m
@@ -140,7 +153,7 @@ uname -m
 | `armv7l`  | `cipher-scope-arm32` |
 | `armv8l`  | `cipher-scope-arm64` |
 
-### Passo 2 — Baixar o binário correto
+#### Passo 2 — Baixar o binário correto (na TV Box)
 
 ```bash
 # ARM64 (ex: Tanix TX6, X96 Max, H96 Max...)
@@ -150,74 +163,145 @@ wget https://github.com/JonathanMar/cipher-scope/releases/latest/download/cipher
 wget https://github.com/JonathanMar/cipher-scope/releases/latest/download/cipher-scope-arm32
 ```
 
-### Passo 3 — Dar permissão de execução
+#### Passo 3 — Permissão e execução
 
 ```bash
 chmod +x cipher-scope-arm64
-```
 
-### Passo 4 — Iniciar o servidor
-
-> ⚠️ **Importante:** use sempre `0.0.0.0` como host — não use o IP fixo da interface.  
-> `0.0.0.0` significa "ouvir em todas as interfaces de rede".
-
-```bash
+# ⚠️ Use sempre 0.0.0.0 (nunca o IP fixo da interface)
 ./cipher-scope-arm64 -addr 0.0.0.0:8080 -no-browser
 ```
 
-O terminal vai exibir:
-
-```
-╔══════════════════════════════════════╗
-║       Cipher Scope  Dashboard        ║
-╠══════════════════════════════════════╣
-║  URL: http://localhost:8080          ║
-╚══════════════════════════════════════╝
-```
-
-### Passo 5 — Descobrir o IP da TV Box
-
-Em outro terminal (ou via SSH), rode:
+#### Passo 4 — Descobrir o IP da TV Box e acessar
 
 ```bash
 hostname -I
-# Exemplo de saída: 192.168.0.113 (esse é o IP da TV Box na rede)
+# Ex: 192.168.0.113
 ```
 
-### Passo 6 — Acessar o dashboard
-
-No **celular, PC ou tablet** conectado na **mesma rede Wi-Fi**, abra o navegador:
-
+No **celular, PC ou tablet** na mesma rede Wi-Fi:
 ```
-http://<IP-DA-TVBOX>:8080
-
-# Exemplo:
 http://192.168.0.113:8080
 ```
 
-O dashboard Cipher Scope abre com todas as funcionalidades disponíveis remotamente.
+---
+
+### 🖧 Modo Distribuído — Master (PC) + Workers (TV Boxes)
+
+Neste modo o PC divide o espaço de combinações e as TV Boxes fazem o trabalho pesado em paralelo.
+
+```
+┌──────────────────────────────────────────────┐
+│              REDE LOCAL Wi-Fi                 │
+│                                              │
+│   💻 PC / Notebook (master)                  │
+│      go run ./master -addr :9000             │
+│      IP: 192.168.0.100                       │
+│            │                                 │
+│     ┌──────┼──────┐                          │
+│     ▼      ▼      ▼                          │
+│   📺TV1  📺TV2  📺TV3   (workers)            │
+│   :9000  :9000  :9000                        │
+└──────────────────────────────────────────────┘
+```
+
+#### 🖥️ No Master (PC principal)
+
+O master coordena o ataque e distribui as tarefas para os workers.
+
+**Passo 1 — Compilar e iniciar o master**
+
+```bash
+# Clonar o projeto (precisa do Go instalado)
+git clone https://github.com/JonathanMar/cipher-scope.git
+cd cipher-scope
+
+# Iniciar o master — aguarda workers na porta 9000
+go run ./master -addr :9000
+```
+
+O master vai pedir interativamente:
+```
+Master ouvindo em :9000
+Hash alvo: <cole o hash aqui>
+Tipo de hash (md5, sha1, sha256): md5
+Tamanho da senha: 6
+Quantos workers aguardar? 2
+Aguardando workers...
+```
+
+**Passo 2 — Aguardar os workers conectarem**
+
+Depois que todos os workers conectarem, o ataque inicia automaticamente e o resultado aparece no terminal do master.
 
 ---
 
-### 🔌 Controlar a TV Box remotamente via SSH
+#### 📺 Nos Workers (cada TV Box)
 
-Se a TV Box tiver SSH habilitado, você pode gerenciar tudo pelo PC:
+Cada TV Box baixa o binário e conecta ao master.
+
+**Passo 1 — Baixar o binário (em cada TV Box)**
 
 ```bash
-# Conectar na TV Box
-ssh usuario@192.168.0.113
+wget https://github.com/JonathanMar/cipher-scope/releases/latest/download/cipher-scope-arm64
+chmod +x cipher-scope-arm64
+```
 
-# Copiar o binário do PC para a TV Box
+**Passo 2 — Conectar ao master**
+
+> Substitua `192.168.0.100` pelo IP real do seu PC/master.
+
+```bash
+# Conectar ao master e usar 4 threads locais
+./cipher-scope-arm64 -worker -master 192.168.0.100:9000 -workers 4
+```
+
+> 💡 `-workers 4` = número de threads na **TV Box local**. Use `nproc` para ver quantos cores ela tem.
+
+**Passo 3 (opcional) — Rodar em background via SSH**
+
+```bash
+# Do PC, copiar o binário para a TV Box
 scp cipher-scope-arm64 usuario@192.168.0.113:~/
 
-# Iniciar em background (continua rodando após fechar o SSH)
-nohup ./cipher-scope-arm64 -addr 0.0.0.0:8080 -no-browser > cipher.log 2>&1 &
+# Conectar e iniciar o worker em background
+ssh usuario@192.168.0.113 \
+  "nohup ./cipher-scope-arm64 -worker -master 192.168.0.100:9000 -workers 4 > worker.log 2>&1 &"
 
-# Ver o log
-tail -f cipher.log
+# Acompanhar o log do worker remotamente
+ssh usuario@192.168.0.113 "tail -f worker.log"
+```
+
+---
+
+#### 📋 Resumo rápido — Ordem de inicialização
+
+```
+1. [PC]   go run ./master -addr :9000         ← inicia primeiro
+2. [TV1]  ./cipher-scope-arm64 -worker -master 192.168.0.100:9000 -workers 4
+3. [TV2]  ./cipher-scope-arm64 -worker -master 192.168.0.100:9000 -workers 4
+          (repita para cada TV Box)
+```
+
+> ⚠️ Sempre inicie o **master antes dos workers**. Os workers aguardam conexão por 30 segundos.
+
+---
+
+### 🔌 Gerenciar TV Box via SSH (do PC)
+
+```bash
+# Copiar binário para a TV Box
+scp cipher-scope-arm64 usuario@192.168.0.113:~/
+
+# Iniciar o dashboard em background (acesso pela rede)
+ssh usuario@192.168.0.113 \
+  "nohup ./cipher-scope-arm64 -addr 0.0.0.0:8080 -no-browser > cipher.log 2>&1 &"
+
+# Ver log em tempo real
+ssh usuario@192.168.0.113 "tail -f cipher.log"
 
 # Parar o servidor
-pkill cipher-scope-arm64
+ssh usuario@192.168.0.113 "pkill cipher-scope-arm64"
 ```
 
 ---
@@ -226,11 +310,12 @@ pkill cipher-scope-arm64
 
 | Erro | Causa | Solução |
 |------|-------|---------|
-| `bind: cannot assign requested address` | Passou um IP que não pertence a esta máquina | Use `-addr 0.0.0.0:8080` |
-| `permission denied` | Binário sem permissão de execução | `chmod +x cipher-scope-arm64` |
-| `exec format error` | Binário errado (ARM32 numa ARM64 ou vice-versa) | Verifique com `uname -m` e baixe o binário correto |
-| Dashboard não abre no celular | Firewall bloqueando a porta | `sudo ufw allow 8080` ou desative o firewall |
-| `no such file or directory` | Binário não está no diretório atual | `ls -la` para verificar e use `./` antes do nome |
+| `bind: cannot assign requested address` | IP fixo passado em `-addr` não pertence a esta máquina | Use `-addr 0.0.0.0:8080` |
+| `permission denied` | Sem permissão de execução | `chmod +x cipher-scope-arm64` |
+| `exec format error` | Binário errado para a arquitetura | Verifique `uname -m` e use o binário correto |
+| Dashboard não abre no celular | Firewall bloqueando porta | `sudo ufw allow 8080` |
+| Worker não conecta ao master | IP do master errado ou master não iniciado | Inicie o master **antes** dos workers |
+| `no such file or directory` | Binário não está no diretório atual | Use `./cipher-scope-arm64` com `./` |
 
 ---
 
