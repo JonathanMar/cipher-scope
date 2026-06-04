@@ -2,16 +2,16 @@ package main
 
 import (
 	"embed"
+	"fmt"
 	"io/fs"
 	"log"
 	"net/http"
 	"os/exec"
 	"runtime"
 
-	"auditor/server"
-
 	goflag "flag"
-	"fmt"
+
+	"auditor/server"
 )
 
 //go:embed ui
@@ -42,7 +42,7 @@ func main() {
 	mux.HandleFunc("/api/identify", server.HandleIdentifyHash)
 	mux.HandleFunc("/api/chrome", server.HandleChromeDecrypt)
 
-	url := fmt.Sprintf("http://localhost%s", *addr)
+	url := buildURL(*addr)
 	fmt.Printf("╔══════════════════════════════════════╗\n")
 	fmt.Printf("║       Cipher Scope  Dashboard        ║\n")
 	fmt.Printf("╠══════════════════════════════════════╣\n")
@@ -54,6 +54,27 @@ func main() {
 	}
 
 	log.Fatal(http.ListenAndServe(*addr, mux))
+}
+
+// buildURL monta a URL de acesso correta a partir do addr configurado.
+//
+//	":8080"              → "http://localhost:8080"
+//	"0.0.0.0:8080"      → "http://localhost:8080"
+//	"192.168.0.5:8080"  → "http://192.168.0.5:8080"
+func buildURL(addr string) string {
+	host := addr
+	port := ""
+	for i := len(addr) - 1; i >= 0; i-- {
+		if addr[i] == ':' {
+			host = addr[:i]
+			port = addr[i:] // inclui ":"
+			break
+		}
+	}
+	if host == "" || host == "0.0.0.0" {
+		host = "localhost"
+	}
+	return fmt.Sprintf("http://%s%s", host, port)
 }
 
 func openBrowser(url string) {
