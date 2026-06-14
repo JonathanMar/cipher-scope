@@ -1,20 +1,97 @@
 <div align="center">
 
-<h1>🔐 Cipher Scope</h1>
+# 🔐 Cipher Scope
 
-<p>Canivete suíço de segurança com dashboard web em tempo real.<br>
-Quebra hashes, decodifica dados, extrai senhas do Chrome e muito mais.<br>
-Escrito em <strong>Go puro</strong> — roda em qualquer máquina, incluindo <strong>TV Box (ARM)</strong>.</p>
+### Canivete suíço de segurança com dashboard web em tempo real
 
-<img src="https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat-square&logo=go&logoColor=white"/>
-<img src="https://img.shields.io/badge/Platform-Linux%20%7C%20ARM%20%7C%20Android-informational?style=flat-square"/>
-<img src="https://img.shields.io/badge/Tests-38%20passing-success?style=flat-square"/>
-<img src="https://img.shields.io/badge/License-MIT-green?style=flat-square"/>
+Quebra hashes, decodifica dados, extrai senhas do Chrome e muito mais.
+
+**Escrito em Go puro — roda em Linux, Windows, macOS, ARM e TV Box.**
+
+<p>
+  <img src="https://img.shields.io/badge/Go-1.22+-00ADD8?style=for-the-badge&logo=go&logoColor=white">
+  <img src="https://img.shields.io/badge/Platform-Linux%20%7C%20Windows%20%7C%20macOS%20%7C%20ARM-blue?style=for-the-badge">
+  <img src="https://img.shields.io/badge/Tests-38%20PASS-success?style=for-the-badge">
+  <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge">
+</p>
+
+<p>
+  <img src="docs/images/dashboard.png" width="900">
+</p>
 
 </div>
 
 ---
 
+# 📸 Interface
+
+## 📊 Dashboard Principal
+
+<p align="center">
+  <img src="docs/images/dashboard.png" width="900">
+</p>
+
+Dashboard em tempo real com:
+
+- progresso via SSE;
+- ETA e tentativas;
+- taxa de hashes por segundo;
+- logs em tempo real;
+- exportação de resultados;
+- dark mode.
+
+---
+
+## 🔓 Hash Cracker
+
+<p align="center">
+  <img src="docs/images/passwordFound.png" width="900">
+</p>
+
+Suporte a:
+
+- Dictionary Attack;
+- Rules Attack (l33t, sufixos, capitalização);
+- Brute Force paralelo;
+- John the Ripper;
+- execução distribuída Master/Worker.
+
+---
+
+## 📝 Logs e Estatísticas
+
+<p align="center">
+  <img src="docs/images/passwordLog.png" width="900">
+</p>
+
+Exibe:
+
+- tentativas realizadas;
+- tempo decorrido;
+- velocidade de processamento;
+- senha encontrada;
+- histórico exportável em `.txt`.
+
+---
+
+## 🛠️ Ferramentas Integradas
+
+<p align="center">
+  <img src="docs/images/tools.png" width="900">
+</p>
+
+Inclui:
+
+- geração de hashes;
+- identificação automática de hashes;
+- Encode/Decode:
+  - Base64
+  - URL
+  - Hexadecimal
+  - Binário
+- extração de credenciais do Chrome.
+
+---
 ## ✨ Funcionalidades
 
 | Categoria | Funcionalidade |
