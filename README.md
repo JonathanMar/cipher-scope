@@ -15,10 +15,6 @@ Quebra hashes, decodifica dados, extrai senhas do Chrome e muito mais.
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge">
 </p>
 
-<p>
-  <img src="docs/images/dashboard.png" width="900">
-</p>
-
 </div>
 
 ---
@@ -27,9 +23,9 @@ Quebra hashes, decodifica dados, extrai senhas do Chrome e muito mais.
 
 ## 📊 Dashboard Principal
 
-<p align="center">
-  <img src="docs/images/dashboard.png" width="900">
-</p>
+<p>
+
+  ![Dashboard](docs/imagens/dashboard.png)</p>
 
 Dashboard em tempo real com:
 
@@ -44,9 +40,9 @@ Dashboard em tempo real com:
 
 ## 🔓 Hash Cracker
 
-<p align="center">
-  <img src="docs/images/passwordFound.png" width="900">
-</p>
+<p>
+
+  ![Hash Cracker](docs/imagens/passwordFund.png)</p>
 
 Suporte a:
 
@@ -58,27 +54,26 @@ Suporte a:
 
 ---
 
-## 📝 Logs e Estatísticas
+## 🌐 Extrator de Senhas do Chrome
 
-<p align="center">
-  <img src="docs/images/passwordLog.png" width="900">
-</p>
+<p>
 
-Exibe:
+  ![Logs](docs/imagens/passworrdLog.png)</p>
 
-- tentativas realizadas;
-- tempo decorrido;
-- velocidade de processamento;
-- senha encontrada;
-- histórico exportável em `.txt`.
+Permite:
 
+- importar o arquivo `Login Data` do Chrome/Chromium;
+- descriptografar credenciais armazenadas localmente;
+- visualizar URL, usuário e senha em uma tabela interativa;
+- exportar os resultados para `.csv`;
+- realizar auditorias, recuperação de credenciais próprias e análises forenses autorizadas diretamente pelo dashboard.
 ---
 
 ## 🛠️ Ferramentas Integradas
 
-<p align="center">
-  <img src="docs/images/tools.png" width="900">
-</p>
+<p>
+
+  ![Ferramentas](docs/imagens/tools.png)</p>
 
 Inclui:
 
